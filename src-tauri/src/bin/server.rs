@@ -17,7 +17,8 @@ async fn main() {
         .asset_dir
         .as_ref()
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/home/criper/Downloads/Asset Pack V2"));
+        .filter(|p| p.exists())
+        .unwrap_or_else(|| PathBuf::from(tuhc_lib::config::default_asset_dir()));
 
     let store = Arc::new(ArchiveStore::load_from_dir(&asset_dir));
     let mod_registry =

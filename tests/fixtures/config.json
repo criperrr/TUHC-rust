@@ -1,0 +1,102 @@
+{
+  "__internal__": {
+    "migrations": {
+      "version": "2.8.1"
+    }
+  },
+  "lastMigratedVersion": "2.6.9",
+  "timestamp": 1793906928628,
+  "assetDir": "/home/criper/Downloads/Asset Pack V2",
+  "tabData": {
+    "activeTabKey": "tab_beta",
+    "tabs": {
+      "tab_alpha": {
+        "key": "tab_alpha",
+        "url": "/homestuck/1",
+        "title": "Homestuck",
+        "hasEmbed": false,
+        "history": [
+          "/"
+        ],
+        "future": []
+      },
+      "tab_beta": {
+        "key": "tab_beta",
+        "url": "/homestuck/2060",
+        "title": "John: Go out to balcony.",
+        "hasEmbed": false,
+        "history": [
+          "/",
+          "/homestuck/1"
+        ],
+        "future": []
+      }
+    },
+    "tabList": [
+      "tab_alpha",
+      "tab_beta"
+    ],
+    "sortedTabList": [],
+    "closedTabList": []
+  },
+  "saveData": {
+    "saves": {},
+    "saveList": []
+  },
+  "settings": {
+    "newReader": {
+      "current": "002500",
+      "limit": "002060"
+    },
+    "notifications": true,
+    "subNotifications": false,
+    "showAddressBar": true,
+    "urlTooltip": true,
+    "switchToNewTabs": false,
+    "forceScrollBar": true,
+    "hideFullscreenHeader": false,
+    "smoothScrolling": false,
+    "pixelScaling": true,
+    "mspaMode": false,
+    "bandcampEmbed": false,
+    "allowSysUpdateNotifs": false,
+    "lastCheckedUpdate": "2026-11-05T19:14:28.855Z",
+    "devMode": false,
+    "enableHardwareAcceleration": true,
+    "useSystemWindowDecorations": false,
+    "useTabbedBrowsing": true,
+    "themeOverride": "default",
+    "themeOverrideUI": "default",
+    "forceThemeOverride": false,
+    "forceThemeOverrideUI": false,
+    "textOverride": {
+      "fontFamily": "",
+      "bold": false,
+      "fontSize": 1.0,
+      "lineHeight": 1.0,
+      "paragraphSpacing": false,
+      "highContrast": false
+    },
+    "arrowNav": true,
+    "openLogs": false,
+    "hqAudio": true,
+    "jsFlashes": true,
+    "reducedMotion": false,
+    "credits": true,
+    "fastForward": false,
+    "retcon1": false,
+    "retcon2": false,
+    "retcon3": false,
+    "retcon4": false,
+    "retcon5": false,
+    "retcon6": false,
+    "bolin": false,
+    "soluslunes": false,
+    "unpeachy": false,
+    "pxsTavros": false,
+    "cursedHistory": false,
+    "ruffleFallback": false,
+    "modListEnabled": []
+  },
+  "appVersion": "2.8.1"
+}

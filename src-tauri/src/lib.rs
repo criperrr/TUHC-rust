@@ -25,7 +25,8 @@ pub fn run() {
                 .asset_dir
                 .as_ref()
                 .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from("/home/criper/Downloads/Asset Pack V2"));
+                .filter(|p| p.exists())
+                .unwrap_or_else(|| PathBuf::from(config::default_asset_dir()));
 
             // Ephemeral loopback port channel
             let (port_tx, port_rx) = tokio::sync::oneshot::channel::<u16>();

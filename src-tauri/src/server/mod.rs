@@ -81,6 +81,58 @@ async fn serve_main_css() -> Response {
     res
 }
 
+/// Coerces a JSON value (number, positive integer, or string) to u64, or default
+fn parse_u64_arg(val: Option<&serde_json::Value>, default: u64) -> usize {
+    val.and_then(|v| {
+        v.as_u64()
+            .or_else(|| v.as_i64().and_then(|n| u64::try_from(n).ok()))
+            .or_else(|| v.as_str().and_then(|s| s.trim().parse::<u64>().ok()))
+    })
+    .unwrap_or(default) as usize
+}
+
+/// Coerces a JSON value (bool, 0/1 integer, or boolean string) to bool, or default
+fn parse_bool_arg(val: Option<&serde_json::Value>, default: bool) -> bool {
+    val.and_then(|v| {
+        v.as_bool()
+            .or_else(|| match v.as_i64() {
+                Some(1) => Some(true),
+                Some(0) => Some(false),
+                _ => None,
+            })
+            .or_else(|| {
+                v.as_str()
+                    .and_then(|s| match s.trim().to_ascii_lowercase().as_str() {
+                        "true" | "1" | "yes" | "on" => Some(true),
+                        "false" | "0" | "no" | "off" => Some(false),
+                        _ => None,
+                    })
+            })
+    })
+    .unwrap_or(default)
+}
+
+/// Extracts page_id supporting "page_id" or "id" as string or positive integer
+fn parse_page_id_arg(args: &serde_json::Value) -> Option<String> {
+    let raw = args.get("page_id").or_else(|| args.get("id"))?;
+    if let Some(s) = raw.as_str() {
+        let trimmed = s.trim();
+        if trimmed.is_empty() || trimmed.starts_with('-') || trimmed == "000000" {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    } else if let Some(n) = raw.as_i64() {
+        if n <= 0 {
+            None
+        } else {
+            Some(format!("{:06}", n))
+        }
+    } else {
+        None
+    }
+}
+
 pub async fn dispatch_ipc(
     state: &AppStateInner,
     command: &str,
@@ -96,37 +148,17 @@ pub async fn dispatch_ipc(
             json_response(StatusCode::OK, info)
         }
         "get_story_page" => {
-            let page_id = if let Some(s) = args.get("page_id").and_then(|v| v.as_str()) {
-                s.to_string()
-            } else if let Some(s) = args.get("id").and_then(|v| v.as_str()) {
-                s.to_string()
-            } else if let Some(n) = args.get("page_id").and_then(|v| v.as_i64()) {
-                if n < 0 {
+            let page_id = match parse_page_id_arg(args) {
+                Some(id) => id,
+                None => {
                     return json_response(
                         StatusCode::NOT_FOUND,
                         serde_json::json!({"error": "Page not found"}),
                     );
                 }
-                format!("{:06}", n)
-            } else {
-                return json_response(
-                    StatusCode::NOT_FOUND,
-                    serde_json::json!({"error": "Missing page_id"}),
-                );
             };
 
-            let page_id_trimmed = page_id.trim();
-            if page_id_trimmed.is_empty()
-                || page_id_trimmed == "000000"
-                || page_id_trimmed.starts_with('-')
-            {
-                return json_response(
-                    StatusCode::NOT_FOUND,
-                    serde_json::json!({"error": "Page not found"}),
-                );
-            }
-
-            match state.store.get_story_page(page_id_trimmed).await {
+            match state.store.get_story_page(&page_id).await {
                 Some(page) => match serde_json::to_value(&page) {
                     Ok(v) => json_response(StatusCode::OK, v),
                     Err(e) => json_response(
@@ -136,13 +168,13 @@ pub async fn dispatch_ipc(
                 },
                 None => json_response(
                     StatusCode::NOT_FOUND,
-                    serde_json::json!({"error": format!("Page '{}' not found", page_id_trimmed)}),
+                    serde_json::json!({"error": format!("Page '{}' not found", page_id)}),
                 ),
             }
         }
         "get_story_range" => {
-            let start = args.get("start").and_then(|v| v.as_u64()).unwrap_or(1901) as usize;
-            let count = args.get("count").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
+            let start = parse_u64_arg(args.get("start"), 1901);
+            let count = parse_u64_arg(args.get("count"), 10);
 
             let summaries = state.store.get_story_range(start, count).await;
             match serde_json::to_value(&summaries) {
@@ -243,10 +275,7 @@ pub async fn dispatch_ipc(
                 );
             };
 
-            let enabled = args
-                .get("enabled")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
+            let enabled = parse_bool_arg(args.get("enabled"), false);
 
             let (success, descriptors, patches) = {
                 let mut mods_lock = state.mods.write().await;
@@ -290,6 +319,10 @@ pub async fn dispatch_ipc(
                 StatusCode::OK,
                 serde_json::json!({"status": "ok", "mod_id": mod_id, "enabled": enabled}),
             )
+        }
+        "trim_memory" => {
+            crate::commands::trim_memory();
+            json_response(StatusCode::OK, serde_json::json!({"status": "ok"}))
         }
         _ => json_response(
             StatusCode::BAD_REQUEST,
@@ -405,4 +438,57 @@ pub async fn start_server(state: AppStateInner, port_tx: tokio::sync::oneshot::S
     axum::serve(listener, app)
         .await
         .expect("Axum server crashed");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_u64_arg() {
+        assert_eq!(parse_u64_arg(Some(&serde_json::json!(0)), 1901), 0);
+        assert_eq!(parse_u64_arg(Some(&serde_json::json!("0")), 1901), 0);
+        assert_eq!(parse_u64_arg(Some(&serde_json::json!(1901)), 10), 1901);
+        assert_eq!(parse_u64_arg(Some(&serde_json::json!("1901")), 10), 1901);
+        assert_eq!(parse_u64_arg(Some(&serde_json::json!(" 42 ")), 10), 42);
+        assert_eq!(parse_u64_arg(Some(&serde_json::json!(-5)), 1901), 1901);
+        assert_eq!(parse_u64_arg(Some(&serde_json::json!("-5")), 1901), 1901);
+        assert_eq!(parse_u64_arg(Some(&serde_json::json!("abc")), 1901), 1901);
+        assert_eq!(parse_u64_arg(None, 1901), 1901);
+    }
+
+    #[test]
+    fn test_parse_bool_arg() {
+        assert!(parse_bool_arg(Some(&serde_json::json!(true)), false));
+        assert!(!parse_bool_arg(Some(&serde_json::json!(false)), true));
+        assert!(parse_bool_arg(Some(&serde_json::json!("true")), false));
+        assert!(!parse_bool_arg(Some(&serde_json::json!("False")), true));
+        assert!(parse_bool_arg(Some(&serde_json::json!(1)), false));
+        assert!(!parse_bool_arg(Some(&serde_json::json!(0)), true));
+        assert!(parse_bool_arg(Some(&serde_json::json!("1")), false));
+        assert!(!parse_bool_arg(Some(&serde_json::json!("0")), true));
+        assert!(!parse_bool_arg(Some(&serde_json::json!("invalid")), false));
+        assert!(!parse_bool_arg(None, false));
+    }
+
+    #[test]
+    fn test_parse_page_id_arg() {
+        let m1 = serde_json::json!({"page_id": "001901"});
+        assert_eq!(parse_page_id_arg(&m1), Some("001901".to_string()));
+
+        let m2 = serde_json::json!({"id": 1901});
+        assert_eq!(parse_page_id_arg(&m2), Some("001901".to_string()));
+
+        let m3 = serde_json::json!({"id": "pony"});
+        assert_eq!(parse_page_id_arg(&m3), Some("pony".to_string()));
+
+        let m4 = serde_json::json!({"page_id": -1});
+        assert_eq!(parse_page_id_arg(&m4), None);
+
+        let m5 = serde_json::json!({"page_id": "000000"});
+        assert_eq!(parse_page_id_arg(&m5), None);
+
+        let m6 = serde_json::json!({});
+        assert_eq!(parse_page_id_arg(&m6), None);
+    }
 }

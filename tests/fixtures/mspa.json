@@ -1,0 +1,392 @@
+{
+  "story": {
+    "001901": {
+      "title": "Homestuck",
+      "pageId": "001901",
+      "timestamp": "1239607316",
+      "flag": [],
+      "media": [
+        "/storyfiles/hs2/00001.gif"
+      ],
+      "content": "A young man stands in his bedroom. It just so happens that today, the 13th of April, 2009, is this young man's birthday. Though it was thirteen years ago he was given life, it is only today he will be given a name!<br /><br />What will the name of this young man be?",
+      "next": [
+        "001902"
+      ]
+    },
+    "001902": {
+      "title": "Enter name.",
+      "pageId": "001902",
+      "timestamp": "1239607342",
+      "flag": [],
+      "media": [
+        "/storyfiles/hs2/00002.gif"
+      ],
+      "content": "",
+      "next": [
+        "001903"
+      ],
+      "previous": "001901"
+    },
+    "001903": {
+      "title": "Try again.",
+      "pageId": "001903",
+      "timestamp": "1239607364",
+      "flag": [],
+      "media": [
+        "/storyfiles/hs2/00003.gif"
+      ],
+      "content": "",
+      "next": [
+        "001904"
+      ],
+      "previous": "001902"
+    },
+    "001904": {
+      "title": "Examine room.",
+      "pageId": "001904",
+      "timestamp": "1239607407",
+      "flag": [],
+      "media": [
+        "/storyfiles/hs2/00004.gif"
+      ],
+      "content": "Your name is JOHN. As was previously mentioned it is your BIRTHDAY. A number of CAKES are scattered about your room. You have a variety of INTERESTS. You have a passion for REALLY TERRIBLE MOVIES. You like to program computers but you are NOT VERY GOOD AT IT. You have a fondness for PARANORMAL LORE, and are an aspiring AMATEUR MAGICIAN. You also like to play GAMES sometimes.<br /><br />What will you do?",
+      "next": [
+        "001905"
+      ],
+      "previous": "001903"
+    },
+    "002060": {
+      "title": "John: Go out to balcony.",
+      "pageId": "002060",
+      "timestamp": "1242440115",
+      "flag": [],
+      "media": [
+        "/storyfiles/hs2/00160.gif"
+      ],
+      "content": "|PESTERLOG|<br /><span style=\"color: #0715cd\">EB: hey, i'm out on the balcony now.</span><br /><span style=\"color: #0715cd\">EB: i am messaging from my dad's pda.</span><br /><span style=\"color: #b536da\">TT: The one you threw into the yard?</span><br /><span style=\"color: #0715cd\">EB: no, i am telling you.</span><br /><span style=\"color: #0715cd\">EB: it jumped out of my sylladex like a frightened weasel.</span><br /><span style=\"color: #b536da\">TT: What were you doing with it in the first place?</span><br /><span style=\"color: #b536da\">TT: I am not sensing a lot of regard for the personal property of others.</span><br /><span style=\"color: #b536da\">TT: Is this how your pent-up frustration with your father manifests itself?</span><br /><span style=\"color: #0715cd\">EB: what? no.</span><br /><span style=\"color: #0715cd\">EB: those were all accidents.</span><br /><span style=\"color: #0715cd\">EB: please take your psycho-babblery elsewhere, miss!</span><br /><span style=\"color: #b536da\">TT: Your bathroom is a mess.</span><br /><span style=\"color: #b536da\">TT: Did you do that too?</span><br /><span style=\"color: #0715cd\">EB: oh man, see this isn't cool.</span><br /><span style=\"color: #0715cd\">EB: all this snooping nonsense!</span><br /><span style=\"color: #b536da\">TT: There's a cake in the toilet.</span><br /><span style=\"color: #0715cd\">EB: yes. there is.</span><br /><span style=\"color: #b536da\">TT: I'm tempted to clean it up for you.</span><br /><span style=\"color: #0715cd\">EB: ok, if that will satisfy your weird ocd complex then go ahead.</span><br /><span style=\"color: #b536da\">TT: My Obsessive-Compulsive Disorder complex?</span><br /><span style=\"color: #b536da\">TT: Can a disorder also be a complex?</span><br /><span style=\"color: #0715cd\">EB: in your case, probably!</span><br /><span style=\"color: #b536da\">TT: Sounds complicated.</span><br /><span style=\"color: #0715cd\">EB: anyway...</span><br /><span style=\"color: #0715cd\">EB: i am going to have a look at this enormous platformy thing you put on the balcony.</span>",
+      "next": [
+        "002061"
+      ],
+      "previous": "002059"
+    },
+    "003701": {
+      "title": "[S] WV?: Rise up.",
+      "pageId": "003701",
+      "timestamp": "1273028465",
+      "flag": [
+        "F",
+        "HQ"
+      ],
+      "media": [
+        "/storyfiles/hs2/01801/01801.swf"
+      ],
+      "content": "",
+      "next": [
+        "003702"
+      ],
+      "previous": "003700"
+    },
+    "006009": {
+      "title": "[S] Cascade.",
+      "pageId": "006009",
+      "timestamp": "1319518728",
+      "flag": [
+        "S",
+        "HQ"
+      ],
+      "media": [
+        "/storyfiles/hs2/04106/04106.swf"
+      ],
+      "content": "",
+      "next": [
+        "006010"
+      ],
+      "previous": "006008",
+      "theme": "cascade"
+    },
+    "darkcage": {
+      "title": "[S] Cage: Reveal plan.",
+      "pageId": "darkcage",
+      "timestamp": "",
+      "flag": [
+        "F",
+        "HQ"
+      ],
+      "media": [
+        "/storyfiles/hs2/darkcage/darkcage.swf"
+      ],
+      "content": "",
+      "next": []
+    },
+    "001905": {
+      "title": "John: Quickly retrieve arms from drawer.",
+      "pageId": "001905",
+      "timestamp": "1239607433",
+      "flag": [],
+      "media": [
+        "/storyfiles/hs2/00005.gif"
+      ],
+      "content": "Your ARMS are in your MAGIC CHEST, pooplord!",
+      "next": [
+        "001906"
+      ],
+      "previous": "001904"
+    }
+  },
+  "ryanquest": {
+    "000002": {
+      "title": "Nice.",
+      "pageId": "000002",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/02.gif"
+      ],
+      "content": "You are feeling pretty pleased with yourself about that. Time to kick back and chill out, and fantasize that dinosaurs are still real, or put on your Batman cape, or whatever the fuck it is you do with your spare time.",
+      "next": [
+        "000003"
+      ],
+      "previous": "000001"
+    },
+    "000001": {
+      "title": "Ryanquest",
+      "pageId": "000001",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/01.gif"
+      ],
+      "content": "Your name is Ryan North.<br /><br /><a href=\"https://www.qwantz.com/index.php?comic=1810\" target=\"_blank\" class=\"postlink\">Today</a> you said a whole bunch of stuff on your <a href=\"https://www.qwantz.com/\" target=\"_blank\" class=\"postlink\">website</a>. You're not really sure what your deal is. You guess you just feel like slandering a good honest hard working dude through your well-trafficked media platform on the world wide web.<br /><br />You punctuate your scorn with a bit of <a href=\"/ryanquest/andrewhussie.png\" target=\"_blank\" class=\"postlink\">fan art</a>.",
+      "next": [
+        "000002"
+      ]
+    },
+    "000003": {
+      "title": "Yes. Awesome.",
+      "pageId": "000003",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/03.gif"
+      ],
+      "content": "",
+      "next": [
+        "000004"
+      ],
+      "previous": "000002"
+    },
+    "000004": {
+      "title": "??????",
+      "pageId": "000004",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/04.gif"
+      ],
+      "content": "",
+      "next": [
+        "000005"
+      ],
+      "previous": "000003"
+    },
+    "000005": {
+      "title": "!!!!!!",
+      "pageId": "000005",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/05.gif"
+      ],
+      "content": "",
+      "next": [
+        "000006"
+      ],
+      "previous": "000004"
+    },
+    "000006": {
+      "title": "......",
+      "pageId": "000006",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/06.gif"
+      ],
+      "content": "",
+      "next": [
+        "000007"
+      ],
+      "previous": "000005"
+    },
+    "000008": {
+      "title": "Andrew: Record scientific data.",
+      "pageId": "000008",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/08.gif"
+      ],
+      "content": "",
+      "next": [
+        "000009"
+      ],
+      "previous": "000007"
+    },
+    "000007": {
+      "previous": "000006",
+      "title": "Andrew: Observe subject.",
+      "pageId": "000007",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/07.gif"
+      ],
+      "content": "",
+      "next": [
+        "000008"
+      ]
+    },
+    "000009": {
+      "title": "Ryan: Dry those eyes and get down to business.",
+      "pageId": "000009",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/09.gif"
+      ],
+      "content": "It is time to put aside all these childish longings for some really cool American guy. Who cares about him? You are really busy, and have important things to do.",
+      "next": [
+        "000010"
+      ],
+      "previous": "000008"
+    },
+    "000010": {
+      "title": "Ryan: Consult neighborhood map.",
+      "pageId": "000010",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/10.gif"
+      ],
+      "content": "It's time to make your daily rounds. You view your TRUSTY MAP.",
+      "next": [
+        "000011"
+      ],
+      "previous": "000009"
+    },
+    "000011": {
+      "title": "Ryan: Find a nice lawn.",
+      "pageId": "000011",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/11.gif"
+      ],
+      "content": "This is a very nice LAWN.<br /><br />It looks like there are excellent SLEEPIN'S to be had here. <br /><br />You must be very discreet though! People in houses tend to think lawn sleepin' is very serious business, and occasionally police men will agree with them.",
+      "next": [
+        "000012"
+      ],
+      "previous": "000010"
+    },
+    "000012": {
+      "title": "Ryan: Make yourself comfortable.",
+      "pageId": "000012",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/12.gif"
+      ],
+      "content": "",
+      "next": [
+        "000013"
+      ],
+      "previous": "000011"
+    },
+    "000013": {
+      "title": "Ryan: Nap time.",
+      "pageId": "000013",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/13_1.gif",
+        "/ryanquest/13_2.gif"
+      ],
+      "content": "All of a sudden a wild RESIDENT notices you!!!!!!<br /><br />But...<br /><br />He doesn't actually seem put off. <br /><br />That...<br /><br />That is a little disappointing, honestly.",
+      "next": [
+        "000014"
+      ],
+      "previous": "000012"
+    },
+    "000014": {
+      "title": "Dang.",
+      "pageId": "000014",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/14.gif"
+      ],
+      "content": "The RESIDENT deploys a HOT MEAL on his front stoop.<br /><br />It smells great.",
+      "next": [
+        "000015"
+      ],
+      "previous": "000013"
+    },
+    "000015": {
+      "title": "Ryan: Consume meal.",
+      "pageId": "000015",
+      "timestamp": "",
+      "flag": [],
+      "media": [
+        "/ryanquest/15.gif"
+      ],
+      "content": "You chow down on ONE (1) HOT TURKEY PLATTER WITH MASHED POTATOES, GRAVY, STRING BEANS, APPLE SAUCE, AND ONE (1) GLASS OF MILK.<br /><br />Your vitals soar.<br /><br />THE END!",
+      "next": [],
+      "previous": "000014"
+    }
+  },
+  "ps_extras": {},
+  "wv": {
+    "anunsealedtunnel": {
+      "title": "MS Paint Adventures",
+      "pageId": "anunsealedtunnel",
+      "content": "\n\n    <tbody><tr>\n    <td bgcolor=\"#FFFFFF\">\n\n\t<center>\n\t<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"80%\">\n        <tbody><tr>\n        <td>\n        <center>\n\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anunsealedtunnel/01.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anunsealedtunnel/02.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anunsealedtunnel/03.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anunsealedtunnel/04.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anunsealedtunnel/05.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anunsealedtunnel/06.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anunsealedtunnel/07.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<br><br><br>\n\n        </center>\n\t</td>\n\t</tr>\n\t</tbody></table>\n\t</center>    \n      </td>\n    </tr>\n  </tbody>"
+    },
+    "windsdownsideways": {
+      "title": "MS Paint Adventures",
+      "pageId": "windsdownsideways",
+      "content": "\n\n    <tbody><tr>\n    <td bgcolor=\"#FFFFFF\">\n\n\t<center>\n\t<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"80%\">\n        <tbody><tr>\n        <td>\n        <center>\n\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/windsdownsideways/01.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/windsdownsideways/02.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/windsdownsideways/03.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/windsdownsideways/04.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/windsdownsideways/05.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/windsdownsideways/06.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/windsdownsideways/07.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n\n<br><br><br>\n\n        </center>\n\t</td>\n\t</tr>\n\t</tbody></table>\n\t</center>    \n      </td>\n    </tr>\n  </tbody>"
+    },
+    "beneaththegleam": {
+      "title": "MS Paint Adventures",
+      "pageId": "beneaththegleam",
+      "content": "\n\n    <tbody><tr>\n    <td bgcolor=\"#FFFFFF\">\n\n\t<center>\n\t<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"80%\">\n        <tbody><tr>\n        <td>\n        <center>\n\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/beneaththegleam/01.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/beneaththegleam/02.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n\n\n<br><br><br>\n\n        </center>\n\t</td>\n\t</tr>\n\t</tbody></table>\n\t</center>    \n      </td>\n    </tr>\n  </tbody>"
+    },
+    "recordsastutteringstep": {
+      "title": "MS Paint Adventures",
+      "pageId": "recordsastutteringstep",
+      "content": "\n\n    <tbody><tr>\n    <td bgcolor=\"#FFFFFF\">\n\n\t<center>\n\t<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"80%\">\n        <tbody><tr>\n        <td>\n        <center>\n\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/recordsastutteringstep/01.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/recordsastutteringstep/02.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/recordsastutteringstep/03.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/recordsastutteringstep/04.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/recordsastutteringstep/05.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/recordsastutteringstep/06.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<br><br><br>\n\n        </center>\n\t</td>\n\t</tr>\n\t</tbody></table>\n\t</center>    \n      </td>\n    </tr>\n  </tbody>"
+    },
+    "asentrywakens": {
+      "title": "MS Paint Adventures",
+      "pageId": "asentrywakens",
+      "content": "\n\n    <tbody><tr>\n    <td bgcolor=\"#FFFFFF\">\n\n\t<center>\n\t<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"80%\">\n        <tbody><tr>\n        <td>\n        <center>\n\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/asentrywakens/01.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/asentrywakens/02.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/asentrywakens/03.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/asentrywakens/04.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/asentrywakens/05.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n\n<br><br><br>\n\n        </center>\n\t</td>\n\t</tr>\n\t</tbody></table>\n\t</center>    \n      </td>\n    </tr>\n  </tbody>"
+    },
+    "anagitatedfinger": {
+      "title": "MS Paint Adventures",
+      "pageId": "anagitatedfinger",
+      "content": "\n\n    <tbody><tr>\n    <td bgcolor=\"#FFFFFF\">\n\n\t<center>\n\t<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"80%\">\n        <tbody><tr>\n        <td>\n        <center>\n\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anagitatedfinger/01.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anagitatedfinger/02.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anagitatedfinger/03.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/anagitatedfinger/04.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n\n<br><br><br>\n\n        </center>\n\t</td>\n\t</tr>\n\t</tbody></table>\n\t</center>    \n      </td>\n    </tr>\n  </tbody>"
+    },
+    "astudiouseye": {
+      "title": "MS Paint Adventures",
+      "pageId": "astudiouseye",
+      "content": "\n\n    <tbody><tr>\n    <td bgcolor=\"#FFFFFF\">\n\n\t<center>\n\t<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"80%\">\n        <tbody><tr>\n        <td>\n        <center>\n\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/astudiouseye/01.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/astudiouseye/02.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/astudiouseye/03.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/astudiouseye/04.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/astudiouseye/05.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/astudiouseye/06.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n\n<br><br><br>\n\n        </center>\n\t</td>\n\t</tr>\n\t</tbody></table>\n\t</center>    \n      </td>\n    </tr>\n  </tbody>"
+    },
+    "preparesforcompany": {
+      "title": "MS Paint Adventures",
+      "pageId": "preparesforcompany",
+      "content": "\n\n    <tbody><tr>\n    <td bgcolor=\"#FFFFFF\">\n\n\t<center>\n\t<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"80%\">\n        <tbody><tr>\n        <td>\n        <center>\n\n\n<img src=\"http://www.mspaintadventures.com/storyfiles/hs2/waywardvagabond/preparesforcompany/01.gif\"><br><br>\n\n<p style=\" font-weight: bold; font-family: courier;><font size=\" 3\"=\"\">  </p><br><br>\n\n\n\n<br><br><br>\n\n        </center>\n\t</td>\n\t</tr>\n\t</tbody></table>\n\t</center>    \n      </td>\n    </tr>\n  </tbody>"
+    }
+  },
+  "faqs": {},
+  "damara": [],
+  "oil_retcon": ""
+}

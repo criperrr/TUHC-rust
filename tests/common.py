@@ -13,14 +13,32 @@ import subprocess
 import unittest
 
 # Authoritative Paths
-ASSET_PACK_DIR = "/home/criper/Downloads/Asset Pack V2"
-CONFIG_PATH = "/home/criper/.config/unofficial-homestuck-collection/config.json"
+BASE_TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+FIXTURES_DIR = os.path.join(BASE_TEST_DIR, "fixtures")
+
+ASSET_PACK_DIR = os.environ.get("TUHC_ASSET_DIR", "/home/criper/Downloads/Asset Pack V2")
+if not os.path.exists(ASSET_PACK_DIR):
+    ASSET_PACK_DIR = FIXTURES_DIR
+
+CONFIG_PATH = os.environ.get("TUHC_CONFIG_PATH", "/home/criper/.config/unofficial-homestuck-collection/config.json")
+if not os.path.exists(CONFIG_PATH):
+    CONFIG_PATH = os.path.join(FIXTURES_DIR, "config.json")
+
 REPO_DIR = "/tmp/tuhc-repo"
 FLASH_PROPS_PATH = os.path.join(REPO_DIR, "src/js/flashProps.js")
+
 PTBR_MOD_DIR = os.path.join(ASSET_PACK_DIR, "mods/Homestuck PT-BR")
 PTBR_TRANSLATION_PATH = os.path.join(PTBR_MOD_DIR, "translation2.json")
+if not os.path.exists(PTBR_TRANSLATION_PATH):
+    PTBR_TRANSLATION_PATH = os.path.join(FIXTURES_DIR, "translation2.json")
+
 MSPA_DATA_PATH = os.path.join(ASSET_PACK_DIR, "archive/data/mspa.json")
+if not os.path.exists(MSPA_DATA_PATH):
+    MSPA_DATA_PATH = os.path.join(FIXTURES_DIR, "mspa.json")
+
 MUSIC_DATA_PATH = os.path.join(ASSET_PACK_DIR, "archive/data/music.json")
+if not os.path.exists(MUSIC_DATA_PATH):
+    MUSIC_DATA_PATH = os.path.join(FIXTURES_DIR, "music.json")
 
 # Global test configuration
 TEST_CONFIG = {
