@@ -1,0 +1,50 @@
+# Rust target artifacts
+/target/
+**/target/
+**/*.rs.bk
+*.pdb
+
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+src-tauri/WixTools/
+
+# Node / Web Frontend
+node_modules/
+dist/
+build/
+.parcel-cache/
+.turbo/
+
+# Python cache & test artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+tests/test_report.json
+*.log
+
+# Environment & Secrets
+.env
+.env*.local
+*.pem
+*.key
+
+# Editor / IDE artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Large local asset downloads/symlinks
+downloads/
+*.zip
+*.tar.gz
+
+# CI / CD Release bundles
+release_assets/

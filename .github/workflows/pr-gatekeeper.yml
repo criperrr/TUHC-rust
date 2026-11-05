@@ -1,0 +1,105 @@
+name: PR Gatekeeper (Quality, Security & Memory Gate)
+
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-gatekeeper-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gatekeeper:
+    name: Gatekeeper (Branch, Commits, Clippy, Tests & Memory < 150MB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Branch Naming (Branch Axiom)
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          echo "Validating branch: $BRANCH_NAME"
+          if [[ "${{ github.base_ref }}" == "main" && "$BRANCH_NAME" == "dev" ]]; then
+            echo "✅ Release promotion from 'dev' to 'main' permitted."
+            exit 0
+          fi
+          REGEX="^(feat|fix|test|refactor|chore|docs)/[a-z0-9-]+$"
+          if [[ ! "$BRANCH_NAME" =~ $REGEX ]]; then
+            echo "❌ ERROR: Branch '$BRANCH_NAME' violates the Branch Axiom."
+            echo "Expected syntax: <category>/<task-name>"
+            echo "Allowed categories: feat, fix, test, refactor, chore, docs (lowercase alphanumeric and hyphens only)."
+            exit 1
+          fi
+          echo "✅ Branch naming compliant: $BRANCH_NAME"
+
+      - name: Validate Commit Message Syntax
+        run: |
+          echo "Validating commit messages in PR..."
+          COMMITS=$(git log --no-merges origin/${{ github.base_ref }}..HEAD --pretty=format:"%s")
+          COMMIT_REGEX="^(feat|fix|test|refactor|chore|docs)(\([a-zA-Z0-9_-]+\))?(\/|:)[[:space:]]*.+"
+
+          while IFS= read -r msg; do
+            if [ -n "$msg" ]; then
+              echo "Checking commit: $msg"
+              if [[ ! "$msg" =~ $COMMIT_REGEX ]]; then
+                echo "❌ ERROR: Commit message outside specification: '$msg'"
+                echo "Expected format: <category>/<short-description> or <category>(<scope>): <short-description>"
+                exit 1
+              fi
+            fi
+          done <<< "$COMMITS"
+          echo "✅ All commit messages conform to Conventional Commit specification."
+
+      - name: Install System Dependencies (Linux WebKitGTK & Tauri)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo Dependencies
+        uses: swatinem/rust-cache@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python Test Dependencies
+        run: pip install psutil
+
+      - name: Cargo Check
+        run: cargo check --verbose
+
+      - name: Code Formatting Check (rustfmt)
+        run: cargo fmt --check
+
+      - name: Static Analysis & Lints (clippy)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Execute Rust Unit Tests
+        run: cargo test --verbose
+
+      - name: Execute Python Dual-Track E2E Test Suite (Tier 1-4)
+        run: python3 tests/e2e_runner.py
+
+      - name: Enforce Memory Footprint SLA (< 150MB RSS)
+        run: python3 .agents/scripts/memory_check.py

@@ -1,0 +1,85 @@
+name: Staging Pipeline (Post-Merge in dev)
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      build_release_binary:
+        description: "Build staging release binary"
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: staging-pipeline
+  cancel-in-progress: false
+
+jobs:
+  validate_and_build:
+    name: Staging Validation & Binary Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies (Linux WebKitGTK & Tauri)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo Dependencies
+        uses: swatinem/rust-cache@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python Test Dependencies
+        run: pip install psutil
+
+      - name: Cargo Check & Format
+        run: |
+          cargo check
+          cargo fmt --check
+
+      - name: Clippy Lints
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Execute Full Test Suites
+        run: |
+          cargo test
+          python3 tests/e2e_runner.py
+
+      - name: Memory SLA Gatekeeper (< 150MB)
+        run: python3 .agents/scripts/memory_check.py
+
+      - name: Compile Staging Release Binary
+        if: github.event_name == 'push' || inputs.build_release_binary == true
+        run: cargo build --release
+
+      - name: Upload Staging Artifacts
+        if: github.event_name == 'push' || inputs.build_release_binary == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: tuhc-staging-linux-x86_64
+          path: target/release/tuhc
+          if-no-files-found: ignore
+          retention-days: 7
