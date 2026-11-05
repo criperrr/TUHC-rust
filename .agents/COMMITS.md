@@ -30,6 +30,14 @@ Append new entries to the end of this file using the standard template:
   - `.github/workflows/*`
 - **Impact / Next Steps:** Milestone 1 Gate APPROVED with 100% test pass (68/68 E2E, 16 Rust tests, 57MB RSS). Repository baseline established on `main`, pushed to origin, and branched to `dev` for Milestone 2 development.
 
+## `2026-11-05 18:21` - `docs(architecture)`: Add Discord RPC subsystem specification
+
+- **Description:** Documented the cross-platform Discord Rich Presence (RPC) subsystem specification in `.agents/ARCHITECTURE.md`, outlining reading presence, music player presence, settings toggle, and non-blocking IPC with exponential backoff.
+- **Files Modified:**
+  - `.agents/ARCHITECTURE.md`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** Establishes formal architecture contract for Feature F25. Ready for implementation in M4/M5.
+
 ## `2026-11-05 18:34` - `fix(ci)`: Add test fixtures and resilient IPC query parameter coercion
 
 - **Description:** Added self-contained test fixtures in `tests/fixtures/` with automatic fallback in `tests/common.py` when full asset pack is not mounted (enabling headless GitHub Actions CI execution). Hardened config persistence with `sync_all()` and added robust query parameter coercion (`parse_u64_arg`, `parse_bool_arg`, `parse_page_id_arg`) in Axum IPC dispatcher.

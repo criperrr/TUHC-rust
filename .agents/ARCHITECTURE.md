@@ -88,6 +88,13 @@ Media files (audio tracks `.mp3`, flash archives `.swf`, videos) require byte-ra
 - Linux WebKitGTK settings use `webkit2gtk::CacheModel::DocumentViewer` to prevent aggressive disk and memory caching of visited story pages.
 - Memory trim calls via `libc::malloc_trim(0)` return freed heap chunks to the OS kernel.
 
+### 3.5. Discord Rich Presence (RPC) Subsystem
+- **Cross-Platform IPC:** Connects asynchronously to Discord's local IPC socket (`/tmp/discord-ipc-0` or `$XDG_RUNTIME_DIR/discord-ipc-0` on Linux/macOS; `\\.\pipe\discord-ipc-0` on Windows).
+- **Graceful Fault Tolerance:** Operates in a dedicated non-blocking background task. If Discord is closed or unreachable, it silently enters exponential backoff retry without blocking UI rendering or Axum server streaming.
+- **Reading Presence:** Displays current Act/Sub-act, page number (`Page 003890 of 008128`), page title (`Dave: Ascend`), story icon asset, and elapsed reading time.
+- **Music Presence:** Displays active music album, track title, and playback state when using the in-app sound test / music player.
+- **Privacy & Settings Control:** Configurable via `settings.json` (`enableDiscordRpc: bool`), allowing users to toggle Rich Presence on/off in real-time.
+
 ---
 
 ## 4. Dual-Track Testing Architecture
