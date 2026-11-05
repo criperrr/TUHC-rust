@@ -393,6 +393,7 @@ impl AppConfig {
 
         temp_file.write_all(json_str.as_bytes())?;
         temp_file.flush()?;
+        temp_file.as_file().sync_all()?;
         temp_file.persist(&path).map_err(|e| e.error)?;
         Ok(())
     }
