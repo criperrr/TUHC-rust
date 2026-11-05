@@ -57,3 +57,17 @@ Append new entries to the end of this file using the standard template:
   - `tests/fixtures/archive/data/mspa.json`
   - `tests/fixtures/archive/data/music.json`
 - **Impact / Next Steps:** Unblocks GitHub Actions PR Gatekeeper on headless runners without 4GB Asset Pack V2.
+
+## `2026-11-05 19:15` - `fix(ci)`: fix fixture mspa schema and fallback asset_dir resolution in server
+
+- **Description:** Fixed `damara` (`[]`) and `oil_retcon` (`""`) types in `tests/fixtures/mspa.json` and `tests/fixtures/archive/data/mspa.json` so `StoryArchive` deserializes cleanly in headless CI, added `mod.js` and `translation2.json` to `tests/fixtures/mods/Homestuck PT-BR/`, and updated `server.rs` and `lib.rs` to fall back to `default_asset_dir()` when a configured `asset_dir` does not exist on disk.
+- **Files Modified:**
+  - `src-tauri/src/config/mod.rs`
+  - `src-tauri/src/bin/server.rs`
+  - `src-tauri/src/lib.rs`
+  - `tests/fixtures/mspa.json`
+  - `tests/fixtures/archive/data/mspa.json`
+  - `tests/fixtures/mods/Homestuck PT-BR/mod.js`
+  - `tests/fixtures/mods/Homestuck PT-BR/translation2.json`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** Resolves 404 on `/ipc/get_story_page?id=001901` during `memory_check.py` on headless CI runners.

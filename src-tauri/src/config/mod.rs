@@ -324,7 +324,13 @@ fn default_app_version() -> String {
     "2.8.1".to_string()
 }
 
-fn default_asset_dir() -> String {
+pub fn default_asset_dir() -> String {
+    if let Ok(env_dir) = std::env::var("TUHC_ASSET_DIR") {
+        let p = PathBuf::from(&env_dir);
+        if p.exists() {
+            return env_dir;
+        }
+    }
     let primary = PathBuf::from("/home/criper/Downloads/Asset Pack V2");
     if primary.exists() {
         return primary.to_string_lossy().into_owned();
