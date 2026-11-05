@@ -324,6 +324,22 @@ fn default_app_version() -> String {
     "2.8.1".to_string()
 }
 
+fn default_asset_dir() -> String {
+    let primary = PathBuf::from("/home/criper/Downloads/Asset Pack V2");
+    if primary.exists() {
+        return primary.to_string_lossy().into_owned();
+    }
+    let manifest_fallback = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."))
+        .join("tests")
+        .join("fixtures");
+    if manifest_fallback.exists() {
+        return manifest_fallback.to_string_lossy().into_owned();
+    }
+    primary.to_string_lossy().into_owned()
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -335,7 +351,7 @@ impl Default for AppConfig {
                     .unwrap_or_default()
                     .as_millis() as u64,
             ),
-            asset_dir: Some("/home/criper/Downloads/Asset Pack V2".to_string()),
+            asset_dir: Some(default_asset_dir()),
             tab_data: TabData::default(),
             save_data: SaveData::default(),
             settings: AppSettings::default(),
