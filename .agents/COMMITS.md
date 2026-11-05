@@ -40,3 +40,11 @@ Append new entries to the end of this file using the standard template:
   - `tests/fixtures/*`
   - `.agents/COMMITS.md`
 - **Impact / Next Steps:** Ensures 100% green builds and test suites across both local developer environments and remote GitHub Actions CI runners.
+
+## `2026-11-05 18:40` - `fix(fixtures)`: Align test config fixture with full TUHC configuration schema
+
+- **Description:** Updated `tests/fixtures/config.json` with the complete official schema matching `saveData`, `settings.newReader`, and UI preference flags.
+- **Files Modified:**
+  - `tests/fixtures/config.json`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** Resolves contract schema assertions in CI (`test_load_config_matches_schema` and `test_config_preserves_new_reader_settings`), achieving 68/68 test passes (100%) in headless GitHub Actions.
