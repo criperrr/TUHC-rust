@@ -79,3 +79,30 @@ Append new entries to the end of this file using the standard template:
   - `tests/fixtures/mods/Homestuck PT-BR/translation2.json`
   - `.agents/COMMITS.md`
 - **Impact / Next Steps:** Resolves 404 on `/ipc/get_story_page?id=001901` during `memory_check.py` on headless CI runners.
+
+
+## `2026-11-05 22:38` - `feat(m2-m4)`: Implement frontend webview, media engine, mod engine, and discord rpc
+
+- **Description:** Complete implementation of Milestones 2, 3, and 4. Added zero-bloat vanilla frontend webview (index.html, main.css with 13 authentic themes, app.js), self-hosted Ruffle WASM media engine with ActionScript Frag IPC bridge and millisecond audio calibration tables (flashProps.js, mediaEngine.js, modHooks.js), and Rust backend enhancements including legacy mod.js parser, VFS overlay generation, Sburb assets:// rewrite, and cross-platform Discord Local IPC Rich Presence. Hardened Frag IPC seek normalization and renderMedia boolean contracts during gate review. All 6 checklist stages, 31 Rust tests, 68 E2E contracts, and 17 adversarial tests passing with ~62MB RSS.
+- **Files Modified:**
+  - `src/index.html`
+  - `src/styles/main.css`
+  - `src/js/app.js`
+  - `src/js/flashProps.js`
+  - `src/js/mediaEngine.js`
+  - `src/js/modHooks.js`
+  - `src-tauri/src/rpc/mod.rs`
+  - `src-tauri/src/config/mod.rs`
+  - `src-tauri/src/data/story.rs`
+  - `src-tauri/src/mods/parser.rs`
+  - `src-tauri/src/mods/mod.rs`
+  - `src-tauri/src/server/vfs.rs`
+  - `src-tauri/src/server/handler.rs`
+  - `src-tauri/src/server/mod.rs`
+  - `src-tauri/src/commands.rs`
+  - `src-tauri/src/lib.rs`
+  - `src-tauri/src/bin/server.rs`
+  - `src-tauri/tests/adversarial_mod_toggle_stress.rs`
+  - `.agents/ARCHITECTURE.md`
+  - `.agents/CURRENT.md`
+- **Impact / Next Steps:** Milestone 2-4 Gate fully passed. Ready for staging, pull request to dev, and CI merge.

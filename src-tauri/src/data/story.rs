@@ -78,6 +78,35 @@ pub struct StoryPagePatch {
     pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
+impl StoryPagePatch {
+    pub fn merge(&mut self, other: &StoryPagePatch) {
+        if let Some(ref title) = other.title {
+            self.title = Some(title.clone());
+        }
+        if let Some(ref content) = other.content {
+            self.content = Some(content.clone());
+        }
+        if let Some(ref media) = other.media {
+            self.media = Some(media.clone());
+        }
+        if let Some(ref flag) = other.flag {
+            self.flag = Some(flag.clone());
+        }
+        if let Some(ref next) = other.next {
+            self.next = Some(next.clone());
+        }
+        if other.previous.is_some() {
+            self.previous = other.previous.clone();
+        }
+        if other.theme.is_some() {
+            self.theme = other.theme.clone();
+        }
+        for (k, v) in &other.extra {
+            self.extra.insert(k.clone(), v.clone());
+        }
+    }
+}
+
 impl StoryPage {
     pub fn apply_patch(&mut self, patch: &StoryPagePatch) {
         if let Some(ref title) = patch.title {
@@ -215,7 +244,7 @@ impl StoryStore {
             return Vec::new();
         }
 
-        let end = (resolved_start + count).min(total);
+        let end = resolved_start.saturating_add(count).min(total);
         self.index.order[resolved_start..end]
             .iter()
             .filter_map(|key| active_guard.story.get(key).map(StoryPageSummary::from))
@@ -227,6 +256,13 @@ impl StoryStore {
         *active_guard = (*self.base).clone();
         for (page_id, patch) in patches {
             if let Some(page) = active_guard.story.get_mut(page_id) {
+                page.apply_patch(patch);
+            } else if let Ok(num) = page_id.trim().parse::<u32>() {
+                let padded = format!("{:06}", num);
+                if let Some(page) = active_guard.story.get_mut(&padded) {
+                    page.apply_patch(patch);
+                }
+            } else if let Some(page) = active_guard.ryanquest.get_mut(page_id) {
                 page.apply_patch(patch);
             }
         }
@@ -377,5 +413,34 @@ mod tests {
         store.reset_to_base().await;
         let p_base = store.get_page("001901").await.unwrap();
         assert_eq!(p_base.title, "Homestuck");
+    }
+
+    #[tokio::test]
+    async fn test_story_range_saturating_add_overflow() {
+        let store = StoryStore::new(create_test_archive());
+        let range = store.get_range(0, usize::MAX).await;
+        assert_eq!(range.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_story_store_unpadded_patch_key() {
+        let store = StoryStore::new(create_test_archive());
+        let mut patches = HashMap::new();
+        patches.insert(
+            "1901".to_string(), // Unpadded key
+            StoryPagePatch {
+                title: Some("Patched Unpadded".to_string()),
+                content: None,
+                media: None,
+                flag: None,
+                next: None,
+                previous: None,
+                theme: None,
+                extra: Default::default(),
+            },
+        );
+        store.apply_patches(&patches).await;
+        let p = store.get_page("001901").await.unwrap();
+        assert_eq!(p.title, "Patched Unpadded");
     }
 }
