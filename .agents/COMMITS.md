@@ -197,3 +197,22 @@ Append new entries to the end of this file using the standard template:
   - `package.json`
   - `.agents/COMMITS.md`
 - **Impact / Next Steps:** Confirmed by user live on desktop ("funcionou perfeitamente"); idle CPU dropped to normal, battery drain eliminated, 6/6 checklist gates and 9/9 visual E2E tests passing 100%.
+
+
+## `2026-11-06 08:22` - `feat(ui)`: Implement authentic TUHC homepage, jumpbox styling, font cleanup, and reading progress auto-save
+
+- **Description:**
+  - Faithfully recreated official TUHC Homepage cards matching original `Homepage.vue` and `HomeRowItem.vue` (Homestuck card with dynamic Resume button, MSPA Classic, Old Comics, News, and Unsorted rows).
+  - Sanitized jumpbox input styling by removing redundant borders and focus outlines, mirroring original AddressBar.vue.
+  - Replaced generic Arial in `.customNavBanner` with authentic MSPA typography (`Courier Prime`, `Courier New`, `Verdana`, `Geneva`).
+  - Implemented dynamic footer logo resolution via `resolveAssetUrl` supporting all MSPA themes without broken image icons.
+  - Implemented automatic reading progress tracking in `settings.newReader.current` and `limit`, dynamically surfacing "Resume Homestuck at page [X]" on the Homepage.
+  - Resolved asynchronous command container race condition in `renderStoryPage` through synchronous link scaffolding and fast in-memory page caching.
+- **Files Modified:**
+  - `src/index.html`
+  - `src/styles/main.css`
+  - `src/js/app.js`
+  - `.agents/CURRENT.md`
+- **Impact / Next Steps:**
+  - 100% test pass rate across `cargo test` (30/30 unit + 3/3 adversarial), `tests/e2e_runner.py` (68/68), and `tests/frontend_e2e/run.py` (9/9).
+  - Application running in background on display for user inspection.

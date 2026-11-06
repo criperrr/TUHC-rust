@@ -26,6 +26,7 @@
     activeTabKey: '000',
     currentRoute: { mode: 'HOMEPAGE' },
     currentPageData: null,
+    pageCache: new Map(),
     musicData: null,
     availableMods: [],
     saveDebounceTimer: null,
@@ -484,12 +485,12 @@
       } catch (_) {}
     }
 
+    persistConfig();
     if (targetKey === state.activeTabKey) {
       updateAddressBar(url);
       updateNavControls();
-      renderRoute(resolveRoute(url));
+      return renderRoute(resolveRoute(url));
     }
-    persistConfig();
   }
 
   function historyBack(targetKey = state.activeTabKey) {
@@ -931,6 +932,51 @@
       pageContainer.classList.add('pageBody');
       pageContainer.classList.add('theme-' + validTheme);
     }
+
+    updateFooterLogos(validTheme);
+  }
+
+  function updateFooterLogos(theme) {
+    if (typeof document === 'undefined') return;
+    const footer = document.getElementById('page-footer');
+    if (!footer) return;
+    const currentTheme = theme || 'mspa';
+    footer.className = `footer ${currentTheme}`;
+
+    let leftSrc = '/images/mspalogo_mspa.png';
+    let rightSrc = '/images/mspalogo_mspa.png';
+    switch (currentTheme) {
+      case 'scratch':
+        leftSrc = rightSrc = '/images/mspalogo_scratch.png';
+        break;
+      case 'sbahj':
+        leftSrc = '/images/mspalogo_sbahj2.jpg';
+        rightSrc = '/images/mspalogo_sbahj.jpg';
+        break;
+      case 'trickster':
+        leftSrc = rightSrc = '/images/mspalogo_trickster.gif';
+        break;
+      case 'A6A6':
+        leftSrc = rightSrc = '/images/mspalogo_a6a6.png';
+        break;
+      case 'pxs':
+        leftSrc = rightSrc = '/images/mspalogo_pxs.png';
+        break;
+      default:
+        leftSrc = rightSrc = '/images/mspalogo_mspa.png';
+        break;
+    }
+
+    const leftImg = footer.querySelector('.bannerImage.left');
+    const rightImg = footer.querySelector('.bannerImage.right');
+    if (leftImg) {
+      leftImg.src = resolveAssetUrl(leftSrc);
+      leftImg.style.display = 'block';
+    }
+    if (rightImg) {
+      rightImg.src = resolveAssetUrl(rightSrc);
+      rightImg.style.display = 'block';
+    }
   }
 
   /**
@@ -992,9 +1038,46 @@
     return processed;
   }
 
+  function updateReadingProgress(pageId) {
+    if (!pageId) return;
+    const n = parseInt(pageId, 10);
+    if (isNaN(n)) return;
+
+    // Check if within Homestuck range (001901 to 010030)
+    if (n >= 1901 && n <= 10030) {
+      if (!state.config) state.config = {};
+      if (!state.config.settings) state.config.settings = {};
+      if (!state.config.settings.newReader) {
+        state.config.settings.newReader = { current: '001901', limit: '001902' };
+      }
+      const padded = String(n).padStart(6, '0');
+      state.config.settings.newReader.current = padded;
+
+      const prevLimit = parseInt(state.config.settings.newReader.limit, 10) || 1902;
+      if (n >= prevLimit - 1) {
+        state.config.settings.newReader.limit = String(Math.min(n + 1, 10030)).padStart(6, '0');
+      }
+
+      state.hasReadStory = true;
+      try {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.setItem('tuhc_reading_active', '1');
+        }
+      } catch (_) {}
+
+      // Persist automatically to config.json
+      persistConfig(false);
+    }
+  }
+
   async function renderStoryPage(pageId) {
     const pageContent = document.getElementById('page-content');
     if (!pageContent) return;
+
+    const pageContainer = document.getElementById('page-container');
+    if (pageContainer) {
+      pageContainer.classList.remove('homepage');
+    }
 
     let titleEl = document.getElementById('page-title');
     let mediaContainer = document.getElementById('media-container');
@@ -1025,7 +1108,10 @@
     if (footerNav) footerNav.innerHTML = '';
 
     try {
-      const page = await ipcInvoke('get_story_page', { page_id: pageId });
+      const page = (state.pageCache && state.pageCache.has(pageId))
+        ? state.pageCache.get(pageId)
+        : await ipcInvoke('get_story_page', { page_id: pageId });
+      if (state.pageCache) state.pageCache.set(pageId, page);
       state.currentPageData = page;
 
       // Update tab title, document title, and TitleBar text
@@ -1057,6 +1143,9 @@
       // Apply theme
       const theme = computeActiveTheme(page.theme, state.config.settings);
       applyTheme(theme);
+
+      // Auto-save reading progress for Homestuck
+      updateReadingProgress(pageId);
 
       // Discord RPC Reading Notification
       if (state.config.settings.enableDiscordRpc) {
@@ -1252,19 +1341,29 @@
         for (const nextId of nextList) {
           const nextArrow = document.createElement('div');
           nextArrow.className = 'nextArrow';
-          nextArrow.innerHTML = `&gt; <a href="/mspa/${nextId}" class="nextArrowLink" data-page-id="${nextId}">...</a>`;
+
+          let initialTitle = '==>';
+          if (nextId === '001902') {
+            initialTitle = 'Enter name.';
+          } else if (nextId === '000219') {
+            initialTitle = 'Retrieve arms from safe.';
+          } else if (state.pageCache && state.pageCache.has(nextId)) {
+            initialTitle = state.pageCache.get(nextId).title;
+          }
+
+          nextArrow.innerHTML = `&gt; <a href="/mspa/${nextId}" class="nextArrowLink" data-page-id="${nextId}">${initialTitle}</a>`;
           commandContainer.appendChild(nextArrow);
 
-          // Asynchronously fetch next title
+          // Asynchronously resolve full dynamic title (handles Portuguese patches and arbitrary pages)
           ipcInvoke('get_story_page', { page_id: nextId }).then((nextPage) => {
-            const link = nextArrow.querySelector('a');
-            if (link && nextPage && nextPage.title) {
-              link.textContent = nextPage.title;
+            if (nextPage && nextPage.title) {
+              if (state.pageCache) state.pageCache.set(nextId, nextPage);
+              const link = nextArrow.querySelector('a');
+              if (link) {
+                link.textContent = nextPage.title;
+              }
             }
-          }).catch(() => {
-            const link = nextArrow.querySelector('a');
-            if (link) link.textContent = `Page ${nextId}`;
-          });
+          }).catch(() => {});
         }
         bindInternalLinks(commandContainer);
       }
@@ -2033,6 +2132,7 @@
       }
 
       state.overlayGeneration++;
+      if (state.pageCache) state.pageCache.clear();
       persistConfig(true);
 
       // Update Quick PT-BR button appearance
@@ -2170,54 +2270,426 @@
      10. System & Utility Pages (Homepage, Log, Map, Search, Credits, SBAHJ)
      ========================================================================== */
 
+  function renderHomeRowItem({ href, thumbsrc, title, date, afterpage, htmlContent }) {
+    const currentNum = parseInt(state.config?.settings?.newReader?.current || '1901', 10);
+    const lockPageNum = afterpage ? parseInt(afterpage, 10) : 0;
+    const isLocked = lockPageNum > 0 && currentNum < lockPageNum;
+
+    if (isLocked) {
+      const vizNum = lockPageNum > 1900 ? String(lockPageNum - 1900) : String(lockPageNum);
+      return `
+        <div class="rowItem">
+          <div class="thumbnail">
+            <img class="mediaembed" src="${resolveAssetUrl('/archive/collection/spoiler_small.png')}" alt="Locked" />
+          </div>
+          <div class="description">
+            <h2>??????</h2>
+            <p class="date">${date}</p>
+            <p>Reach page ${vizNum} of Homestuck to unlock!</p>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="rowItem">
+        <a class="thumbnail" href="${href}">
+          <img class="mediaembed" src="${resolveAssetUrl(thumbsrc)}" alt="${title}" />
+        </a>
+        <div class="description">
+          <h2><a href="${href}">${title}</a></h2>
+          <p class="date">${date}</p>
+          ${htmlContent}
+        </div>
+      </div>
+    `;
+  }
+
   function renderHomepage(container) {
     applyTheme(computeActiveTheme(null, state.config.settings));
     document.title = 'The Unofficial Homestuck Collection';
 
+    const pageContainer = document.getElementById('page-container');
+    if (pageContainer) {
+      pageContainer.classList.add('homepage');
+    }
+
+    const newReader = state.config?.settings?.newReader || {};
+    const current = newReader.current;
+    const currentNum = parseInt(current, 10);
+    const hasReadingProgress = Boolean(
+      current &&
+      (currentNum > 1901 ||
+        (currentNum === 1901 && (state.hasReadStory || (typeof window !== 'undefined' && window.sessionStorage && window.sessionStorage.getItem('tuhc_reading_active')))))
+    );
+
+    let hsLinkHtml = '';
+    if (hasReadingProgress) {
+      const viz = mspaToViz(current);
+      const pageNumDisplay = (viz && viz.page) ? viz.page : String(currentNum - 1900);
+      hsLinkHtml = `
+        <div class="left bigLink">
+          &gt; <a href="/mspa/${current}" id="resume-homestuck-btn" class="resumeLink">Resume Homestuck at page ${pageNumDisplay}</a>
+        </div>
+        <div class="subLink" style="font-size: 13px; font-weight: normal; margin-top: 5px;">
+          &gt; <a href="/mspa/6" id="begin-homestuck-btn">Begin Homestuck</a>
+        </div>
+      `;
+    } else {
+      hsLinkHtml = `
+        <div class="left bigLink">
+          &gt; <a href="/mspa/6" id="begin-homestuck-btn">Begin Homestuck</a>
+        </div>
+      `;
+    }
+
     container.innerHTML = `
-      <div class="systemPageContainer" style="text-align: center;">
-        <h1 style="font-family: 'Courier New', monospace; font-size: 28px; margin-top: 10px;">
-          THE UNOFFICIAL HOMESTUCK COLLECTION
-        </h1>
-        <p class="prattle" style="margin: 0 auto 20px auto;">
-          An authentic offline desktop environment for reading MS Paint Adventures with high-performance VFS streaming, 13 themes, flash emulation & full discography.
-        </p>
+      <!-- Top Logo Card -->
+      <div class="card logoCard">
+        <a href="/" class="cardContent">
+          <div class="topLogo">
+            <img src="${resolveAssetUrl('/archive/collection/logo_v2_static.png')}" alt="The Unofficial Homestuck Collection" />
+          </div>
+        </a>
+        <div class="cardContent collection"></div>
+      </div>
 
-        <div class="adventureGrid">
-          <div class="settingsSectionCard">
-            <h3>HOMESTUCK</h3>
-            <p style="font-size: 12px;">8,130 Pages. The epic story of four kids who play a game called Sburb.</p>
-            <a href="/mspa/6" class="primaryActionBtn" style="display: inline-block; text-decoration: none;">Read Homestuck</a>
+      <!-- Homestuck Card -->
+      <div class="card tight hsCard">
+        <div class="cardContent cardEntry">
+          <div class="icon">
+            <a href="/mspa/6"><img src="${resolveAssetUrl('/images/archive_hs.gif')}" alt="Homestuck" /></a>
+            <p class="date">Apr 2009 - Apr 2016</p>
+            <p class="date">8,130 pages</p>
+          </div>
+          <div class="description">
+            <p><em>A story about some kids who are friends over the internet. They decide to play a game together. There are major consequences.</em></p><br>
+            <p>The fourth, final, and most famous of the MS Paint Adventures. While it began as a "mock-game" following reader commands like the previous adventures, they were phased out as the story unfolded into a mixed-media barrage of mid-2000's internet culture satire, interpersonal drama, and Weird Plot Shit [sic].</p><br>
+            <p>One-upping Problem Sleuth's action-packed GIFs, Homestuck spiced up pivotal moments with Flash animations scored by a lively team of composers. Over time, the music team produced dozens of albums across a variety of genres.</p>
+            <div class="links">
+              ${hsLinkHtml}
+              <div class="center">
+                &gt; <a href="/log/6">Adventure Log</a><br>
+                &gt; <a href="/map/6">Adventure Map</a>
+              </div>
+              <div class="right">
+                &gt; <a href="/decode">Decoding Tools</a><br>
+                &gt; <a href="/credits">Credits</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cardContent cardRows">
+          <div class="rowItem">
+            <a class="thumbnail" href="/mspa/5"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_beta.png')}" alt="Homestuck BETA" /></a>
+            <div class="description">
+              <h2><a href="/mspa/5">Homestuck BETA</a></h2>
+              <p class="date">Apr 2009</p>
+              <p>Homestuck was initially intended to be made exclusively in Flash. It lasted about three days.</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/music"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_music.png')}" alt="Music" /></a>
+            <div class="description">
+              <h2><a href="/music">Music</a></h2>
+              <p class="date">Aug 2009 - Apr 2020</p>
+              <p>Explore the entire discography of official Homestuck music.</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/sbahj"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_sbahj.png')}" alt="Sweet Bro & Hella Jeff" /></a>
+            <div class="description">
+              <h2><a href="/sbahj">Sweet Bro &amp; Hella Jeff</a></h2>
+              <p class="date">Mar 2009 - Nov 2017</p>
+              <p class="comicsans">it keeps happening</p>
+              <p>&gt; <a href="/assets/archive/forum/SBaHJ Origins.html">The origin story.</a></p>
+            </div>
+          </div>
+          ${renderHomeRowItem({
+            href: '/dstrider',
+            thumbsrc: '/archive/collection/archive_dstrider.png',
+            title: 'The Blog of Dave Strider',
+            date: 'Jan 2010 - Mar 2010',
+            afterpage: '003053',
+            htmlContent: '<p>There\'s this really cool dude, ok? He ran a blog for a while. That\'s really all there is to say on the matter.</p>'
+          })}
+          ${renderHomeRowItem({
+            href: '/squiddles',
+            thumbsrc: '/archive/collection/archive_squiddles.png',
+            title: 'Squiddles! Sing-Along',
+            date: 'Aug 2010',
+            afterpage: '004432',
+            htmlContent: '<p>The Squiddles! Sing-Along album came with a flash animation produced by the art and music teams. <a href="/news/8-26-10">Incredibly silly.</a></p>'
+          })}
+          ${renderHomeRowItem({
+            href: '/namcohigh',
+            thumbsrc: '/archive/collection/archive_namcohigh.png',
+            title: 'Namco High',
+            date: 'Dec 2013 - Jul 2014',
+            afterpage: '008135',
+            htmlContent: '<p>Date famous Namco characters in this baffling crossover directed by Andrew Hussie. Features Homestuck cameos?</p>'
+          })}
+          ${renderHomeRowItem({
+            href: '/pxs',
+            thumbsrc: '/archive/collection/archive_pxs.png',
+            title: 'Paradox Space',
+            date: 'Apr 2014 - Mar 2016',
+            afterpage: '008753',
+            htmlContent: '<p>Tales from the depths of canon.</p><p>Short-form stories written by community figures.</p>'
+          })}
+          ${renderHomeRowItem({
+            href: '/snaps',
+            thumbsrc: '/archive/collection/archive_snaps.png',
+            title: 'Snapchat',
+            date: 'Oct 2016 - Aug 2017',
+            afterpage: '010030',
+            htmlContent: '<p>Extra snapshots of life on Earth C, continuing from the credits. No longer canon as of The Epilogues.</p>'
+          })}
+          ${renderHomeRowItem({
+            href: '/skaianet',
+            thumbsrc: '/archive/collection/archive_skaianet.png',
+            title: 'Skaianet Systems',
+            date: 'Jan 2019',
+            afterpage: '010030',
+            htmlContent: '<p>Tomorrow\'s canon, today! Homestuck still has plenty in store for you.</p>'
+          })}
+          ${renderHomeRowItem({
+            href: '/epilogues',
+            thumbsrc: '/archive/epilogues/resources/archive_ep.gif',
+            title: 'The Homestuck Epilogues',
+            date: 'Apr 2019',
+            afterpage: '010030',
+            htmlContent: '<p>Ten years after their adventure began, the heroes are enjoying a well-earned retirement on Earth C. But John still has one last choice to make.</p>'
+          })}
+        </div>
+      </div>
+
+      <!-- MSPA Classic Card (Jailbreak, Bard Quest, Problem Sleuth) -->
+      <div class="card mspaCard">
+        <img src="${resolveAssetUrl('/archive/collection/mspa_logo_dark.png')}" class="logo mspaLogo cardContent" alt="MS Paint Adventures" />
+        <div class="cardContent mainSection">
+          <!-- Jailbreak -->
+          <div class="cardContent cardEntry jbCard">
+            <div class="icon">
+              <a href="/mspa/1"><img src="${resolveAssetUrl('/images/archive_jb.gif')}" alt="Jailbreak" /></a>
+              <p class="date">Sep 2006 - Feb 2007</p>
+              <p class="date">134 pages</p>
+            </div>
+            <div class="description">
+              <h2><a href="/mspa/1">Jailbreak</a></h2>
+              <p><em>A guy tries to escape from prison.</em></p><br>
+              <p>The very first MS Paint Adventure. Andrew Hussie ran it as a game on his personal forum, with a rule that forced him to follow the first command suggested after each post. This resulted in barely controlled chaos.</p><br>
+              <p>Jailbreak was the origin point of several long running jokes that would later return in Homestuck.</p>
+              <div class="links">
+                &gt; <a href="/log/1">Adventure Log</a>
+              </div>
+            </div>
           </div>
 
-          <div class="settingsSectionCard">
-            <h3>MUSIC DISCOGRAPHY</h3>
-            <p style="font-size: 12px;">37 Albums, 797 Tracks. The complete MSPA musical archive with Sound Test.</p>
-            <a href="/music" class="primaryActionBtn" style="display: inline-block; text-decoration: none;">Open Music Player</a>
+          <!-- Bard Quest -->
+          <div class="cardContent cardEntry bqCard">
+            <div class="icon">
+              <a href="/mspa/2"><img src="${resolveAssetUrl('/images/archive_bq.gif')}" alt="Bard Quest" /></a>
+              <p class="date">Jun - Jul 2007</p>
+              <p class="date">47 pages</p>
+            </div>
+            <div class="description">
+              <h2><a href="/mspa/2">Bard Quest</a></h2>
+              <p><em>A young bard's endeavor to slay some dragons. Branching "choose your own adventure" style.</em></p><br>
+              <p>The second MS Paint Adventure. The branching paths were an experiement that ultimately proved too complex to manage, dooming it to an early cancellation.</p>
+              <div class="links">
+                &gt; <a href="/log/2">Adventure Log</a>
+              </div>
+            </div>
           </div>
 
-          <div class="settingsSectionCard">
-            <h3>PROBLEM SLEUTH</h3>
-            <p style="font-size: 12px;">1,674 Pages. A hard-boiled detective story turned cosmic battle.</p>
-            <a href="/mspa/4" class="primaryActionBtn" style="display: inline-block; text-decoration: none;">Read Problem Sleuth</a>
+          <!-- Problem Sleuth -->
+          <div class="cardContent cardEntry psCard">
+            <div class="icon">
+              <a href="/mspa/4"><img src="${resolveAssetUrl('/images/archive_ps.gif')}" alt="Problem Sleuth" /></a>
+              <p class="date">Mar 2008 - Apr 2009</p>
+              <p class="date">1,674 pages</p>
+            </div>
+            <div class="description">
+              <h2><a href="/mspa/4">Problem Sleuth</a></h2>
+              <p><em>An adventure about a hard boiled detective in his office.</em></p><br>
+              <p>The third MS Paint Adventure. An absurd pastiche of adventure games and JRPG mechanics, all involving absolutely no detective work whatsoever.</p><br>
+              <p>With its rampant escalation of chaos and the gradual inclusion of strikingly animated GIFs, Problem Sleuth proved to be MSPA's first major hit.</p>
+              <div class="links">
+                <div class="left">
+                  &gt; <a href="/unlock/PS_titlescreen">Title screen</a>
+                </div>
+                <div class="center">
+                  &gt; <a href="/log/4">Adventure Log</a><br>
+                </div>
+                <div class="right">
+                  &gt; <a href="/map/4">Adventure Map</a>
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <div class="settingsSectionCard">
-            <h3>BARD QUEST</h3>
-            <p style="font-size: 12px;">47 Pages. An interactive choose-your-own-adventure experiment.</p>
-            <a href="/mspa/2" class="primaryActionBtn" style="display: inline-block; text-decoration: none;">Read Bard Quest</a>
+        <div class="cardContent cardRows">
+          <div class="rowItem">
+            <a class="thumbnail" href="/unlock"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_unlocks.png')}" alt="Unlockable Content" /></a>
+            <div class="description">
+              <h2><a href="/unlock">Unlockable Content</a></h2>
+              <p class="date">Nov 2008</p>
+              <p>Fan-requested commands drawn for fans who made donations. But Andrew is no longer doing them. Sorry!</p>
+            </div>
           </div>
-
-          <div class="settingsSectionCard">
-            <h3>JAILBREAK</h3>
-            <p style="font-size: 12px;">135 Pages. The adventure where it all began in 2006.</p>
-            <a href="/mspa/1" class="primaryActionBtn" style="display: inline-block; text-decoration: none;">Read Jailbreak</a>
+          <div class="rowItem">
+            <a class="thumbnail" href="/faqs/science"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_science.png')}" alt="Science FAQ" /></a>
+            <div class="description">
+              <h2><a href="/faqs/science">Science FAQ</a></h2>
+              <p class="date">Mar 2009</p>
+              <p>An explanation of some of the science works in Problem Sleuth. Is physics real? Sorta!</p>
+            </div>
           </div>
+        </div>
+      </div>
 
-          <div class="settingsSectionCard">
-            <h3>SWEET BRO &amp; HELLA JEFF</h3>
-            <p style="font-size: 12px;">The iconic JPEG-artefacted webcomic masterpiece.</p>
-            <a href="/sbahj/1" class="primaryActionBtn" style="display: inline-block; text-decoration: none;">Read SBAHJ</a>
+      <!-- Old Comics Card (TSO) -->
+      <div class="card tsoCard">
+        <img src="${resolveAssetUrl('/archive/collection/tso_logo.png')}" class="logo tsoLogo cardContent" alt="Team Special Olympics" />
+        <div class="cardContent cardEntry tsoCard">
+          <div class="icon">
+            <a href="/tso"><img src="${resolveAssetUrl('/archive/collection/archive_tso.png')}" alt="Old comics" /></a>
+            <p class="date">??? - Aug 2008</p>
+          </div>
+          <div class="description">
+            <h2><a href="/tso">Old comics</a></h2>
+            <p>Before MSPA, Hussie used to maintain a webcomic site, the most important comics of which can be found here. Some weren't <em>technically</em> part of Team Special Olympics, but that doesn't really matter.</p><br>
+            <p>Below, you can find a handful of old blog posts and forum threads from around the same time period. Several long-running jokes (such as references to Olive Garden and the Saw franchise) originated here.</p>
+          </div>
+        </div>
+        <div class="cardContent cardRows">
+          <div class="rowItem">
+            <a class="thumbnail" href="/offeryoucantrefuse"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_offeryoucantrefuse.png')}" alt="An Offer You Can't Refuse" /></a>
+            <div class="description">
+              <h2><a href="/offeryoucantrefuse">An Offer You Can't Refuse</a></h2>
+              <p class="date">Jun 2006</p>
+              <p>Answer one simple question for a FREE* Dinner for Two at Olive Garden®!</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/magicaljourney"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_magicaljourney.png')}" alt="Magical Journey" /></a>
+            <div class="description">
+              <h2><a href="/magicaljourney">Come With Me on a Magical Journey Through the Internet!</a></h2>
+              <p class="date">Nov 2007</p>
+              <p>Diving deep into Olive Garden®'s hole.</p>
+            </div>
+          </div>
+          <div class="rowItem cheerfulbear">
+            <a class="thumbnail" href="/assets/archive/forum/Cheerfulbear - PLAY ME.html"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_cheerfulbear.png')}" alt="Cheerfulbear" /></a>
+            <div class="description">
+              <h2><a href="/assets/archive/forum/Cheerfulbear - PLAY ME.html">Cheerfulbear - PLAY ME</a></h2>
+              <p class="date">Jan 2008</p>
+              <p>HELLO CHEERFULBEAR I WOULD LIKE TO PLAY A GAME HELLO CHEERFULBEAR I WOULD</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/assets/archive/forum/Dear Andrew.html"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_suckoff.png')}" alt="The Man-On-Man Suckoff Challenge" /></a>
+            <div class="description">
+              <h2><a href="/assets/archive/forum/Dear Andrew.html">The Man-On-Man Suckoff Challenge</a></h2>
+              <p class="date">Jun 2008 - May 2009</p>
+              <p>Gaze deep into the uncanny valley.</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/wizardyherbert/"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_wh.png')}" alt="Wizardy Herbert" /></a>
+            <div class="description">
+              <h2><a href="/wizardyherbert/">Wizardy Herbert</a></h2>
+              <p class="date">Jul 2008</p>
+              <p>An unfinished book draft of a book about wizards and fanciful magicks. Last revised July 2008, discovered December 2012.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- News Card -->
+      <div class="card newsCard">
+        <div class="logo newsLogo cardContent">
+          <img src="${resolveAssetUrl('/archive/collection/news_logo.png')}" alt="MSPA News" />
+        </div>
+        <div class="cardContent">
+          <div class="description">
+            <p>Throughout the run of MSPA, Andrew Hussie used various means of communicating with fans. The "news blurb" lasted the full run of the site, while others ran at different times.</p>
+          </div>
+        </div>
+        <div class="cardContent cardRows">
+          <div class="rowItem">
+            <a class="thumbnail" href="/news"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_news.png')}" alt="MSPA Newsposts" /></a>
+            <div class="description">
+              <h2><a href="/news">MSPA Newsposts</a></h2>
+              <p class="date">Jun 2007 - Apr 2018</p>
+              <p>An archive of official newsposts, ranging the entire lifespan of the MSPA website.</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/blogspot"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_blogspot.png')}" alt="Blogspot" /></a>
+            <div class="description">
+              <h2><a href="/blogspot">Blogspot</a></h2>
+              <p class="date">Dec 2008 - Jul 2010</p>
+              <p>Used by Andrew Hussie for behind the scenes commentary during the early days of Homestuck.</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/formspring"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_formspring.png')}" alt="Formspring" /></a>
+            <div class="description">
+              <h2><a href="/formspring">Formspring</a></h2>
+              <p class="date">Feb 2010 - Aug 2011</p>
+              <p>Q&As with Andrew Hussie, providing context and commentary on Homestuck until it was dropped in mid-2011.</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/tumblr"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_tumblr.png')}" alt="Tumblr" /></a>
+            <div class="description">
+              <h2><a href="/tumblr">Tumblr</a></h2>
+              <p class="date">Oct 2011 - Mar 2013</p>
+              <p>Picked up in place of Formspring. Used mainly for announcements and Q&As, then abandoned in 2013.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unsorted Card -->
+      <div class="card unsortedCard noHeaderCard">
+        <div class="cardContent cardRows">
+          <div class="rowItem">
+            <a class="thumbnail" href="/desktops"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_desktops.png')}" alt="Desktop Wallpapers" /></a>
+            <div class="description">
+              <h2><a href="/desktops">Desktop Wallpapers</a></h2>
+              <p class="date">Apr 2009 - Oct 2009</p>
+              <p>A collection of wallpapers that was maintained during the first few months of Homestuck.</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/tbiy"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_tbiy.png')}" alt="The Baby is You" /></a>
+            <div class="description">
+              <h2><a href="/tbiy">The Baby is You</a></h2>
+              <p class="date">Oct 2010</p>
+              <p>After the MSPA Forums banned a certain "genre" of fanart, this was created by Toby Fox as an act of rebellion.</p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/vigilprince"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_vigilprince.png')}" alt="The Vigil Prince" /></a>
+            <div class="description">
+              <h2><a href="/vigilprince">The Vigil Prince</a></h2>
+              <p class="date">Jun 2009</p>
+              <p>Laugh, and the world laughs with you;</p>
+              <p>Weep, and you weep alone.</p>
+              <p><em>-Wilford Brimley</em></p>
+            </div>
+          </div>
+          <div class="rowItem">
+            <a class="thumbnail" href="/ryanquest"><img class="mediaembed" src="${resolveAssetUrl('/archive/collection/archive_ryanquest.png')}" alt="Ryanquest" /></a>
+            <div class="description">
+              <h2><a href="/ryanquest">Ryanquest</a></h2>
+              <p class="date">Oct 2010</p>
+              <p><a href="https://www.qwantz.com">Ryan North</a> has had enough of Andrew Hussie's lies. Join him on his quest to do... something.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -2341,6 +2813,108 @@
     bindInternalLinks(container);
   }
 
+  function renderEvenMore(container) {
+    applyTheme(computeActiveTheme(null, state.config.settings));
+    document.title = 'Even More Content — The Unofficial Homestuck Collection';
+
+    const extSites = [
+      {
+        id: 'hsmusic',
+        url: 'https://hsmusic.wiki',
+        name: 'HSMusic',
+        desc: 'HSMusic Wiki is an extensive catalog of Homestuck music and musicians. It includes the full Homestuck discography and most associated music and has tons of information and supplementary material.'
+      },
+      {
+        id: 'readmspa',
+        url: 'http://readmspa.org',
+        name: 'readmspa',
+        desc: 'Readmspa has an enormous amount of data about Homestuck including stats, visualizations, transcripts, and storyboards.'
+      },
+      {
+        id: 'MSPFA',
+        url: 'https://mspfa.com',
+        name: 'MS Paint Fan Adventures',
+        desc: 'A hub for fans to write and share their own MSPA-styled adventures.'
+      },
+      {
+        id: 'homestuck_net',
+        url: 'https://homestuck.net',
+        name: 'HOMESTUCK.net',
+        desc: 'A massive fandom archive, with an extensive listing of fan projects, crafts, cosplay resources, games, software, sheet music, liveblogs, and more.'
+      },
+      {
+        id: 'wiki',
+        url: 'https://mspa.wikia.com/',
+        name: 'MSPA WIKI',
+        desc: 'The MSPA Wiki. A great database of character information and summaries.'
+      },
+      {
+        id: 'skaianet',
+        url: 'http://skaia.net',
+        name: 'Skaia.net',
+        desc: 'An internet radio station for Homestuck music, and an archive that hosts fanmade MSPA resources including music, artwork, and group projects.'
+      },
+      {
+        id: 'rafe',
+        url: 'http://rafe.name/homestuck/',
+        name: 'The Acts and Pages of Homestuck',
+        desc: 'A map of Homestuck, with information and summaries of each act and section of the comic.'
+      },
+      {
+        id: 'mrcheeze',
+        url: 'https://mrcheeze.github.io/andrewhussie/',
+        name: 'The Works of Andrew Hussie',
+        desc: 'A collection including some of Andrew Hussie\'s early works that didn\'t make it into the collection, including Barty\'s Brew-Ha-Ha, art tutorials, and more.'
+      },
+      {
+        id: 'wheals',
+        url: 'http://wheals.github.io/',
+        name: 'wheals.github.io',
+        desc: 'wheals\' Homestuck archive of social media, including various news interviews with Andrew.'
+      },
+      {
+        id: 'voxus',
+        url: 'https://www.youtube.com/playlist?list=PLHO1rc05qiGtAidSBy_8jsEOlHXR6x4cd',
+        name: 'Voxus: Let\'s Read Homestuck',
+        desc: 'An extensive voice-acting readthrough of Homestuck.'
+      },
+      {
+        id: 'mozai',
+        url: 'https://nepeta.mozai.com',
+        name: 'nepeta.mozai.com',
+        desc: 'Mozai\'s Homestuck fansite, with an archive of old fandom resources.'
+      }
+    ];
+
+    container.innerHTML = `
+      <div class="card center evenMoreCard" style="max-width: 950px; margin: 0 auto 25px; padding: 25px 50px; border: 5px solid var(--page-pageBorder, var(--page-pageFrame)); background: var(--page-pageContent); box-sizing: border-box;">
+        <div class="cardContent">
+          <a class="logo" href="/"><img src="${resolveAssetUrl('/archive/collection/logo_v2_static.png')}" alt="TUHC Logo" style="max-width: 400px; display: block; margin: 0 auto 16px;" /></a>
+        </div>
+        <div class="cardContent" style="text-align: left;">
+          <h2 style="text-align: center; margin-bottom: 16px;">Looking for more?</h2>
+          <p style="margin-bottom: 1.5em; text-align: center;">
+            We've tried to pack as much as we possibly can into this archive, but there are so many more fan resources and communities you can explore. Here are a few notable archives and projects:
+          </p>
+          <section class="list" style="display: flex; flex-wrap: wrap; gap: 16px 0;">
+            ${extSites.map(site => `
+              <div class="siteItem" style="flex: 1 0 45%; display: flex; padding: 1em; border-top: 2px solid var(--page-pageBorder, var(--page-pageFrame)); box-sizing: border-box;">
+                <a class="icon" href="${site.url}" target="_blank" rel="noopener noreferrer" style="flex-shrink: 0; margin-right: 1em;">
+                  <img src="${resolveAssetUrl(`/archive/collection/external/${site.id}.png`)}" alt="${site.name}" style="object-fit: contain; height: 80px; width: 80px; display: block;" onerror="this.style.display='none'" />
+                </a>
+                <div class="text">
+                  <h3 style="margin: 0 0 0.5em 0;"><a href="${site.url}" target="_blank" rel="noopener noreferrer">${site.name}</a></h3>
+                  <p class="desc" style="font-size: 13px; line-height: 1.4; margin: 0;">${site.desc}</p>
+                </div>
+              </div>
+            `).join('')}
+          </section>
+        </div>
+      </div>
+    `;
+    bindInternalLinks(container);
+  }
+
   /* ==========================================================================
      11. Master Route Dispatcher (renderRoute)
      ========================================================================== */
@@ -2353,6 +2927,15 @@
     if (typeof document === 'undefined') return;
     const pageContent = document.getElementById('page-content');
     if (!pageContent) return;
+
+    const pageContainer = document.getElementById('page-container');
+    if (pageContainer) {
+      if (route.mode === 'HOMEPAGE') {
+        pageContainer.classList.add('homepage');
+      } else {
+        pageContainer.classList.remove('homepage');
+      }
+    }
 
     // Reset default styling
     pageContent.style.display = 'block';
@@ -2403,6 +2986,9 @@
         break;
       case 'SBAHJ':
         renderSbahj(pageContent, route.cid);
+        break;
+      case 'EVENMORE':
+        renderEvenMore(pageContent);
         break;
       default:
         renderHomepage(pageContent);
@@ -2708,6 +3294,7 @@
 
     // 2. Load Config & Tab State
     await loadConfig();
+    updateFooterLogos(state.theme || 'mspa');
 
     // 3. Setup UI Chromes & Event Listeners
     renderTabBar();
