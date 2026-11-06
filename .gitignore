@@ -25,6 +25,12 @@ __pycache__/
 htmlcov/
 tests/test_report.json
 *.log
+tests/frontend_e2e/screenshots/*.png
+!tests/frontend_e2e/screenshots/.gitkeep
+tests/frontend_e2e/logs/*.log
+!tests/frontend_e2e/logs/.gitkeep
+tests/frontend_e2e/reports/*.json
+!tests/frontend_e2e/reports/.gitkeep
 
 # Environment & Secrets
 .env
