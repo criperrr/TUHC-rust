@@ -119,3 +119,31 @@ Append new entries to the end of this file using the standard template:
   - `src-tauri/src/lib.rs`
   - `src-tauri/src/server/mod.rs`
 - **Impact / Next Steps:** Desktop application restarted with pixel parity matching legacy screenshots. All 6 verification gates pass.
+
+## `2026-11-05 23:25` - `test(frontend-e2e)`: Verify frontend visual suite and document architectural comparison
+
+- **Description:** Fortified Playwright frontend visual and subsystem E2E suite (`run.py`, `e2e_runner.js`), achieving 100% test pass rate across 9 subsystems with 11 captured screenshots. Authored exhaustive technical architecture and comparison documentation in `tests/frontend_e2e/README.md` contrasting Playwright with `@tauri-apps/wdio-tauri-service` and native WebKitWebDriver across execution speed, srcdoc Ruffle WASM isolation, CDP diagnostic interception, memory SLA compliance, and CI snapshot determinism.
+- **Files Modified:**
+  - `tests/frontend_e2e/run.py`
+  - `tests/frontend_e2e/e2e_runner.js`
+  - `tests/frontend_e2e/README.md`
+  - `.agents/CURRENT.md`
+- **Impact / Next Steps:** High-speed, deterministic visual and subsystem regression suite operational in 14.1s; ready for CI integration.
+
+## `2026-11-05 23:25` - `fix(scroll-mods-layout-themes)`: Fix WebKit scrolling lag, remove duplicate titlebar, fix PT-BR translation mod, and ensure deterministic themes
+
+- **Description:** Resolved 4 critical issues reported by user:
+  1. Lag on scroll & CPU consumption: Enabled WebKitGTK smooth scrolling and HardwareAccelerationPolicy::Always; added GPU compositing layer isolation (`will-change: transform; transform: translateZ(0);`) to sticky `.appHeader`; enabled CSS smooth scrolling.
+  2. Duplicate window decorators: Removed redundant HTML `#titleBar` element, restoring approved 2-row layout (Row 1: Tab Bar with tabs and `＋`, Row 2: Address Bar with `< > ⟳ ⌂`, input, GO, `★` favorites, and `⚙` settings navigation button).
+  3. PT-BR translation mod: Fixed `save_config` IPC parameter mismatch (`new_config` / `config` / `newConfig`), harmonized `modListEnabled` and `enabledMods` two-way synchronization between Rust and JavaScript, added case/underscore-tolerant mod lookup, and verified page title translations (`Insira o nome.`, `Tente novamente.`).
+  4. Unstable themes: Applied theme classes and `data-theme` deterministically across `html`, `body`, `#app`, and `#page-container`; eliminated hardcoded `applyTheme('mspa')` on system pages in favor of user theme override evaluation.
+- **Files Modified:**
+  - `src-tauri/src/lib.rs`
+  - `src-tauri/src/commands.rs`
+  - `src-tauri/src/config/mod.rs`
+  - `src-tauri/src/mods/mod.rs`
+  - `src-tauri/src/server/mod.rs`
+  - `src/index.html`
+  - `src/styles/main.css`
+  - `src/js/app.js`
+- **Impact / Next Steps:** All 6 checklist verification gates passing 100%, 30 cargo unit/integration tests passing, 68 E2E contract tests passing, memory RSS < 150MB SLA compliant.

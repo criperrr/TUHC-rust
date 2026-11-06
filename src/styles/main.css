@@ -337,6 +337,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -380,54 +384,24 @@ a:visited {
 }
 
 /* --------------------------------------------------------------------------
-   4. Top Browser Chrome: TitleBar, TabBar & AddressBar (F08)
+   4. Top Browser Chrome: TabBar (Row 1) & AddressBar (Row 2) (F08)
    -------------------------------------------------------------------------- */
 .appHeader {
   position: sticky;
   top: 0;
   z-index: 100;
+  will-change: transform;
+  transform: translateZ(0);
   background-color: var(--header-bg);
   border-bottom: 1px solid var(--header-border);
   user-select: none;
   font-family: var(--font-family-ui, "Segoe UI", Arial, sans-serif);
   font-size: 12px;
-  --title-bar-height: 22px;
   --address-bar-height: 28px;
   --tab-height: 28px;
 }
 
-/* Row 1: TitleBar */
-.titleBar {
-  position: relative;
-  background: var(--header-bg);
-  color: var(--font-header);
-  margin-top: 1px;
-  height: calc(var(--title-bar-height) - 1px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.titleBarText {
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 80%;
-  margin: 0 auto;
-  padding-top: 2px;
-  font-size: 14px;
-  font-family: var(--font-family-ui, "Courier New", monospace);
-}
-
-.titleBarButtons {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
-  height: var(--title-bar-height);
-}
-
+/* System Button generic state styling */
 .systemButton {
   cursor: pointer;
   user-select: none;
@@ -442,27 +416,27 @@ a:visited {
   background: var(--header-buttonClickState, rgba(0, 0, 0, 0.15));
 }
 
-.titleBarButtons .systemButton {
-  display: inline-block;
-  width: calc((8 / 7) * var(--title-bar-height));
-  height: var(--title-bar-height);
-  line-height: var(--title-bar-height);
-  text-align: center;
-  padding: 0 2px;
-  font-size: 13px;
+/* Row 1: TabSection */
+.tabSection {
+  background: var(--header-tabSection);
+  width: 100%;
+  height: var(--tab-height);
+  display: flex;
+  align-items: center;
+  border-top: none;
+  border-bottom: none;
 }
 
-#closeButton:hover {
-  color: #ffffff;
-  background: rgb(255, 73, 73);
-}
-
-/* Row 2 & 3: TabBar with Navigation & AddressBar */
+/* Row 2: AddressBar */
+.addressBar,
 .tabBar {
   display: flex;
-  flex-flow: row wrap;
+  flex-flow: row nowrap;
+  align-items: center;
   background: var(--header-bg);
   border-top: 1px solid var(--header-border);
+  height: var(--address-bar-height);
+  width: 100%;
 }
 
 .navigationButtons {
@@ -525,6 +499,8 @@ a:visited {
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  border: none;
+  padding: 0;
 }
 
 .jumpBoxInput {
@@ -569,20 +545,29 @@ a:visited {
   color: #ffbb00;
 }
 
-/* Line break between AddressBar row and TabBar row */
-.lineBreak {
-  flex-basis: 100%;
-  height: 0;
-}
-
-/* Row 3: TabSection */
-.tabSection {
-  background: var(--header-tabSection);
-  width: 100%;
-  height: var(--tab-height);
+.addressActions {
   display: flex;
   align-items: center;
-  border-top: 1px solid var(--header-border);
+  padding: 0 6px 0 2px;
+  height: var(--address-bar-height);
+}
+
+.settingsButton {
+  color: var(--font-header);
+  background: transparent;
+  border: none;
+  height: 24px;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 0;
+}
+
+.settingsButton:hover {
+  background: var(--header-buttonHoverState, rgba(0, 0, 0, 0.10));
 }
 
 .tabList {
@@ -1483,4 +1468,117 @@ nav.navBanner,
   border-radius: 3px;
   z-index: 250;
   pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Debug HUD & Real-time Diagnostic Overlay
+   -------------------------------------------------------------------------- */
+.tuhcDebugHud {
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  background: rgba(0, 15, 5, 0.85);
+  color: #00ff66;
+  border: 1px solid rgba(0, 255, 102, 0.45);
+  border-radius: 4px;
+  padding: 6px 10px;
+  z-index: 99999;
+  position: fixed;
+  top: 40px;
+  right: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65), 0 0 8px rgba(0, 255, 102, 0.2);
+  user-select: none;
+  min-width: 250px;
+  backdrop-filter: blur(4px);
+  transition: opacity 0.15s ease;
+}
+
+.tuhcDebugHud.minimized {
+  min-width: unset;
+  padding: 3px 8px;
+}
+
+.tuhcDebugHud .hudHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 255, 102, 0.25);
+  padding-bottom: 3px;
+  margin-bottom: 4px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.tuhcDebugHud .hudTitle {
+  color: #55ff99;
+  font-size: 10px;
+}
+
+.tuhcDebugHud .hudActions {
+  display: flex;
+  gap: 4px;
+}
+
+.tuhcDebugHud .hudBtn {
+  background: transparent;
+  color: #00ff66;
+  border: 1px solid rgba(0, 255, 102, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 14px;
+  font-family: inherit;
+}
+
+.tuhcDebugHud .hudBtn:hover {
+  background: rgba(0, 255, 102, 0.2);
+  color: #ffffff;
+}
+
+.tuhcDebugHud .hudBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tuhcDebugHud .hudRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.tuhcDebugHud .hudLabel {
+  color: #00aa44;
+  margin-right: 4px;
+  font-size: 10px;
+}
+
+.tuhcDebugHud .hudVal {
+  font-weight: bold;
+}
+
+.tuhcDebugHud .hudSub {
+  color: #008833;
+  margin-left: 3px;
+  font-size: 9px;
+}
+
+.tuhcDebugHud .hudGreen {
+  color: #00ff66;
+}
+
+.tuhcDebugHud .hudYellow {
+  color: #ffcc00;
+}
+
+.tuhcDebugHud .hudRed {
+  color: #ff4444;
+}
+
+.tuhcDebugHud .hudMinimizedBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
 }
