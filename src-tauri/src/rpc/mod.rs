@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::sync::RwLock;
+use tokio::sync::{mpsc, RwLock};
 
-pub const DEFAULT_DISCORD_CLIENT_ID: &str = "826580095689326633";
+pub const DEFAULT_DISCORD_CLIENT_ID: &str = "1568232968214945812";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -39,6 +40,7 @@ pub struct DiscordStatus {
     pub activity: Option<DiscordActivity>,
 }
 
+#[derive(Debug)]
 struct DiscordRpcInner {
     enabled: bool,
     connected: bool,
@@ -48,9 +50,17 @@ struct DiscordRpcInner {
     nonce_counter: u64,
 }
 
+#[derive(Debug)]
+enum RpcCommand {
+    UpdateActivity(Option<DiscordActivity>),
+    SetEnabled(bool),
+    SetClientId(String),
+}
+
 #[derive(Clone)]
 pub struct DiscordRpcManager {
     inner: Arc<RwLock<DiscordRpcInner>>,
+    tx: mpsc::Sender<RpcCommand>,
 }
 
 /// Resolves an MSPA page_id to its canonical `(chapter_or_act, icon_key)` pair.
@@ -223,25 +233,301 @@ pub fn candidate_socket_paths() -> Vec<PathBuf> {
     paths
 }
 
+async fn handshake_stream<S: AsyncReadExt + AsyncWriteExt + Unpin>(
+    stream: &mut S,
+    client_id: &str,
+) -> std::io::Result<()> {
+    let handshake = serde_json::json!({
+        "v": 1,
+        "client_id": client_id,
+    });
+    let hs_frame = encode_ipc_frame(0, &handshake);
+    stream.write_all(&hs_frame).await?;
+    stream.flush().await?;
+
+    let mut header_buf = [0u8; 8];
+    tokio::time::timeout(
+        Duration::from_millis(500),
+        stream.read_exact(&mut header_buf),
+    )
+    .await
+    .map_err(|_| std::io::Error::new(std::io::ErrorKind::TimedOut, "Handshake timed out"))??;
+
+    let opcode = u32::from_le_bytes([header_buf[0], header_buf[1], header_buf[2], header_buf[3]]);
+    let reply_len =
+        u32::from_le_bytes([header_buf[4], header_buf[5], header_buf[6], header_buf[7]]) as usize;
+
+    if reply_len <= 65536 {
+        let mut body_buf = vec![0u8; reply_len];
+        let _ = stream.read_exact(&mut body_buf).await;
+    }
+
+    if opcode == 2 {
+        return Err(std::io::Error::other("Discord rejected handshake (code 2)"));
+    }
+
+    Ok(())
+}
+
+async fn send_activity_frame<S: AsyncWriteExt + Unpin>(
+    stream: &mut S,
+    activity: Option<&DiscordActivity>,
+    nonce: &str,
+) -> std::io::Result<()> {
+    let pid = std::process::id();
+    let activity_json = match activity {
+        Some(act) => serde_json::json!({
+            "details": act.details,
+            "state": act.state,
+            "timestamps": {
+                "start": act.start_timestamp,
+            },
+            "assets": {
+                "large_image": act.large_image_key,
+                "large_text": act.large_image_text,
+                "small_image": act.small_image_key,
+                "small_text": act.small_image_text,
+            }
+        }),
+        None => serde_json::Value::Null,
+    };
+
+    let cmd_payload = serde_json::json!({
+        "cmd": "SET_ACTIVITY",
+        "args": {
+            "pid": pid,
+            "activity": activity_json,
+        },
+        "nonce": nonce,
+    });
+
+    let cmd_frame = encode_ipc_frame(1, &cmd_payload);
+    stream.write_all(&cmd_frame).await?;
+    stream.flush().await?;
+    Ok(())
+}
+
+#[cfg(unix)]
+async fn connect_discord_socket(client_id: &str) -> Option<tokio::net::UnixStream> {
+    for sock_path in candidate_socket_paths() {
+        if !sock_path.exists() {
+            continue;
+        }
+        if let Ok(Ok(mut stream)) = tokio::time::timeout(
+            Duration::from_millis(200),
+            tokio::net::UnixStream::connect(&sock_path),
+        )
+        .await
+        {
+            if handshake_stream(&mut stream, client_id).await.is_ok() {
+                return Some(stream);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+async fn connect_discord_socket(
+    client_id: &str,
+) -> Option<tokio::net::windows::named_pipe::NamedPipeClient> {
+    for i in 0..10 {
+        let pipe_name = format!(r"\\.\pipe\discord-ipc-{}", i);
+        if let Ok(mut client) =
+            tokio::net::windows::named_pipe::ClientOptions::new().open(&pipe_name)
+        {
+            if handshake_stream(&mut client, client_id).await.is_ok() {
+                return Some(client);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(not(any(unix, windows)))]
+async fn connect_discord_socket(_client_id: &str) -> Option<()> {
+    None
+}
+
+async fn run_rpc_worker(
+    inner: Arc<RwLock<DiscordRpcInner>>,
+    mut rx: mpsc::Receiver<RpcCommand>,
+    mut client_id: String,
+    mut enabled: bool,
+) {
+    let mut current_activity: Option<DiscordActivity> = None;
+
+    #[cfg(unix)]
+    let mut active_stream: Option<tokio::net::UnixStream> = None;
+
+    #[cfg(windows)]
+    let mut active_stream: Option<tokio::net::windows::named_pipe::NamedPipeClient> = None;
+
+    #[cfg(not(any(unix, windows)))]
+    let mut active_stream: Option<()> = None;
+
+    loop {
+        if enabled && active_stream.is_none() {
+            #[cfg(any(unix, windows))]
+            {
+                if let Some(mut stream) = connect_discord_socket(&client_id).await {
+                    let nonce = {
+                        let mut guard = inner.write().await;
+                        guard.nonce_counter = guard.nonce_counter.saturating_add(1);
+                        guard.connected = true;
+                        format!("tuhc-rpc-{}", guard.nonce_counter)
+                    };
+                    if let Some(ref act) = current_activity {
+                        let _ = send_activity_frame(&mut stream, Some(act), &nonce).await;
+                    }
+                    active_stream = Some(stream);
+                } else {
+                    inner.write().await.connected = false;
+                }
+            }
+        }
+
+        if let Some(ref mut stream) = active_stream {
+            let mut read_buf = [0u8; 1024];
+            let mut disconnect = false;
+
+            #[cfg(any(unix, windows))]
+            tokio::select! {
+                cmd = rx.recv() => {
+                    match cmd {
+                        Some(RpcCommand::UpdateActivity(act)) => {
+                            current_activity = act.clone();
+                            let nonce = {
+                                let mut guard = inner.write().await;
+                                guard.nonce_counter = guard.nonce_counter.saturating_add(1);
+                                guard.last_activity = act.clone();
+                                format!("tuhc-rpc-{}", guard.nonce_counter)
+                            };
+                            if send_activity_frame(stream, act.as_ref(), &nonce).await.is_err() {
+                                disconnect = true;
+                            }
+                        }
+                        Some(RpcCommand::SetEnabled(new_enabled)) => {
+                            enabled = new_enabled;
+                            inner.write().await.enabled = new_enabled;
+                            if !new_enabled {
+                                let nonce = {
+                                    let mut guard = inner.write().await;
+                                    guard.nonce_counter = guard.nonce_counter.saturating_add(1);
+                                    format!("tuhc-rpc-{}", guard.nonce_counter)
+                                };
+                                let _ = send_activity_frame(stream, None, &nonce).await;
+                                disconnect = true;
+                            }
+                        }
+                        Some(RpcCommand::SetClientId(new_id)) => {
+                            if new_id != client_id {
+                                client_id = new_id.clone();
+                                inner.write().await.client_id = new_id;
+                                disconnect = true;
+                            }
+                        }
+                        None => {
+                            let nonce = {
+                                let mut guard = inner.write().await;
+                                guard.nonce_counter = guard.nonce_counter.saturating_add(1);
+                                format!("tuhc-rpc-{}", guard.nonce_counter)
+                            };
+                            let _ = send_activity_frame(stream, None, &nonce).await;
+                            break;
+                        }
+                    }
+                }
+                read_res = stream.read(&mut read_buf) => {
+                    match read_res {
+                        Ok(0) | Err(_) => {
+                            disconnect = true;
+                        }
+                        Ok(_) => {}
+                    }
+                }
+            }
+
+            if disconnect {
+                active_stream = None;
+                inner.write().await.connected = false;
+            }
+        } else if enabled {
+            tokio::select! {
+                cmd = rx.recv() => {
+                    match cmd {
+                        Some(RpcCommand::UpdateActivity(act)) => {
+                            current_activity = act.clone();
+                            let mut guard = inner.write().await;
+                            guard.nonce_counter = guard.nonce_counter.saturating_add(1);
+                            guard.last_activity = act;
+                        }
+                        Some(RpcCommand::SetEnabled(new_enabled)) => {
+                            enabled = new_enabled;
+                            inner.write().await.enabled = new_enabled;
+                        }
+                        Some(RpcCommand::SetClientId(new_id)) => {
+                            client_id = new_id.clone();
+                            inner.write().await.client_id = new_id;
+                        }
+                        None => break,
+                    }
+                }
+                _ = tokio::time::sleep(Duration::from_secs(3)) => {}
+            }
+        } else {
+            match rx.recv().await {
+                Some(RpcCommand::UpdateActivity(act)) => {
+                    current_activity = act.clone();
+                    let mut guard = inner.write().await;
+                    guard.nonce_counter = guard.nonce_counter.saturating_add(1);
+                    guard.last_activity = act;
+                }
+                Some(RpcCommand::SetEnabled(new_enabled)) => {
+                    enabled = new_enabled;
+                    inner.write().await.enabled = new_enabled;
+                }
+                Some(RpcCommand::SetClientId(new_id)) => {
+                    client_id = new_id.clone();
+                    inner.write().await.client_id = new_id;
+                }
+                None => break,
+            }
+        }
+    }
+}
+
 impl DiscordRpcManager {
-    pub fn new(enabled: bool) -> Self {
-        let client_id = std::env::var("TUHC_DISCORD_CLIENT_ID")
-            .unwrap_or_else(|_| DEFAULT_DISCORD_CLIENT_ID.to_string());
+    pub fn new(enabled: bool, custom_client_id: Option<String>) -> Self {
+        let client_id = custom_client_id
+            .filter(|s| !s.trim().is_empty())
+            .or_else(|| std::env::var("TUHC_DISCORD_CLIENT_ID").ok())
+            .unwrap_or_else(|| DEFAULT_DISCORD_CLIENT_ID.to_string());
+
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
 
-        Self {
-            inner: Arc::new(RwLock::new(DiscordRpcInner {
-                enabled,
-                connected: false,
-                client_id,
-                session_start: now,
-                last_activity: None,
-                nonce_counter: 0,
-            })),
+        let inner = Arc::new(RwLock::new(DiscordRpcInner {
+            enabled,
+            connected: false,
+            client_id: client_id.clone(),
+            session_start: now,
+            last_activity: None,
+            nonce_counter: 0,
+        }));
+
+        let (tx, rx) = mpsc::channel(32);
+
+        let inner_clone = Arc::clone(&inner);
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(async move {
+                run_rpc_worker(inner_clone, rx, client_id, enabled).await;
+            });
         }
+
+        Self { inner, tx }
     }
 
     pub async fn get_status(&self) -> DiscordStatus {
@@ -255,49 +541,39 @@ impl DiscordRpcManager {
     }
 
     pub async fn set_enabled(&self, enabled: bool) -> DiscordStatus {
-        let (client_id, nonce, last_act) = {
+        {
             let mut guard = self.inner.write().await;
             guard.enabled = enabled;
-            guard.nonce_counter = guard.nonce_counter.saturating_add(1);
             if !enabled {
                 guard.connected = false;
             }
-            (
-                guard.client_id.clone(),
-                format!("tuhc-rpc-{}", guard.nonce_counter),
-                guard.last_activity.clone(),
-            )
-        };
-
-        if enabled {
-            if let Some(ref act) = last_act {
-                let connected = Self::try_emit_ipc(&client_id, Some(act), &nonce).await;
-                self.inner.write().await.connected = connected;
-            }
-        } else {
-            let _ = Self::try_emit_ipc(&client_id, None, &nonce).await;
         }
+        let _ = self.tx.try_send(RpcCommand::SetEnabled(enabled));
+        self.get_status().await
+    }
 
+    pub async fn set_client_id(&self, client_id: &str) -> DiscordStatus {
+        let clean = client_id.trim();
+        let target_id = if clean.is_empty() {
+            DEFAULT_DISCORD_CLIENT_ID.to_string()
+        } else {
+            clean.to_string()
+        };
+        {
+            let mut guard = self.inner.write().await;
+            guard.client_id = target_id.clone();
+        }
+        let _ = self.tx.try_send(RpcCommand::SetClientId(target_id));
         self.get_status().await
     }
 
     pub async fn clear_presence(&self) -> DiscordStatus {
-        let (enabled, client_id, nonce) = {
+        {
             let mut guard = self.inner.write().await;
             guard.last_activity = None;
             guard.nonce_counter = guard.nonce_counter.saturating_add(1);
-            (
-                guard.enabled,
-                guard.client_id.clone(),
-                format!("tuhc-rpc-{}", guard.nonce_counter),
-            )
-        };
-
-        if enabled {
-            let connected = Self::try_emit_ipc(&client_id, None, &nonce).await;
-            self.inner.write().await.connected = connected;
         }
-
+        let _ = self.tx.try_send(RpcCommand::UpdateActivity(None));
         self.get_status().await
     }
 
@@ -309,7 +585,7 @@ impl DiscordRpcManager {
             format!("{} (Page {})", page_title.trim(), page_id)
         };
 
-        let (enabled, client_id, nonce, activity) = {
+        let activity = {
             let mut guard = self.inner.write().await;
             guard.nonce_counter = guard.nonce_counter.saturating_add(1);
             let act = DiscordActivity {
@@ -325,19 +601,10 @@ impl DiscordRpcManager {
                 track_id: None,
             };
             guard.last_activity = Some(act.clone());
-            (
-                guard.enabled,
-                guard.client_id.clone(),
-                format!("tuhc-rpc-{}", guard.nonce_counter),
-                act,
-            )
+            act
         };
 
-        if enabled {
-            let connected = Self::try_emit_ipc(&client_id, Some(&activity), &nonce).await;
-            self.inner.write().await.connected = connected;
-        }
-
+        let _ = self.tx.try_send(RpcCommand::UpdateActivity(Some(activity)));
         self.get_status().await
     }
 
@@ -362,7 +629,7 @@ impl DiscordRpcManager {
         let small_key = if playing { "play" } else { "pause" };
         let small_text = if playing { "Playing" } else { "Paused" };
 
-        let (enabled, client_id, nonce, activity) = {
+        let activity = {
             let mut guard = self.inner.write().await;
             guard.nonce_counter = guard.nonce_counter.saturating_add(1);
             let act = DiscordActivity {
@@ -378,116 +645,23 @@ impl DiscordRpcManager {
                 track_id,
             };
             guard.last_activity = Some(act.clone());
-            (
-                guard.enabled,
-                guard.client_id.clone(),
-                format!("tuhc-rpc-{}", guard.nonce_counter),
-                act,
-            )
+            act
         };
 
-        if enabled {
-            let connected = Self::try_emit_ipc(&client_id, Some(&activity), &nonce).await;
-            self.inner.write().await.connected = connected;
-        }
-
+        let _ = self.tx.try_send(RpcCommand::UpdateActivity(Some(activity)));
         self.get_status().await
     }
 
     #[cfg(unix)]
-    async fn try_emit_ipc(
-        client_id: &str,
-        activity: Option<&DiscordActivity>,
-        nonce: &str,
-    ) -> bool {
-        let candidates = candidate_socket_paths();
-        for sock_path in candidates {
-            if !sock_path.exists() {
-                continue;
-            }
-            let res = tokio::time::timeout(
-                std::time::Duration::from_millis(150),
-                Self::send_over_unix_socket(&sock_path, client_id, activity, nonce),
-            )
-            .await;
-
-            if let Ok(Ok(())) = res {
-                return true;
-            }
-        }
-        false
-    }
-
-    #[cfg(not(unix))]
-    async fn try_emit_ipc(
-        _client_id: &str,
-        _activity: Option<&DiscordActivity>,
-        _nonce: &str,
-    ) -> bool {
-        false
-    }
-
-    #[cfg(unix)]
-    async fn send_over_unix_socket(
+    pub async fn send_over_unix_socket(
         sock_path: &std::path::Path,
         client_id: &str,
         activity: Option<&DiscordActivity>,
         nonce: &str,
     ) -> std::io::Result<()> {
         let mut stream = tokio::net::UnixStream::connect(sock_path).await?;
-
-        // 1. Handshake (opcode 0)
-        let handshake = serde_json::json!({
-            "v": 1,
-            "client_id": client_id,
-        });
-        let hs_frame = encode_ipc_frame(0, &handshake);
-        stream.write_all(&hs_frame).await?;
-
-        // Read handshake response header (non-fatal if empty, but standard Discord replies with READY)
-        let mut header_buf = [0u8; 8];
-        if stream.read_exact(&mut header_buf).await.is_ok() {
-            let reply_len =
-                u32::from_le_bytes([header_buf[4], header_buf[5], header_buf[6], header_buf[7]])
-                    as usize;
-            if reply_len <= 65536 {
-                let mut body_buf = vec![0u8; reply_len];
-                let _ = stream.read_exact(&mut body_buf).await;
-            }
-        }
-
-        // 2. SET_ACTIVITY frame (opcode 1)
-        let pid = std::process::id();
-        let activity_json = match activity {
-            Some(act) => serde_json::json!({
-                "details": act.details,
-                "state": act.state,
-                "timestamps": {
-                    "start": act.start_timestamp,
-                },
-                "assets": {
-                    "large_image": act.large_image_key,
-                    "large_text": act.large_image_text,
-                    "small_image": act.small_image_key,
-                    "small_text": act.small_image_text,
-                }
-            }),
-            None => serde_json::Value::Null,
-        };
-
-        let cmd_payload = serde_json::json!({
-            "cmd": "SET_ACTIVITY",
-            "args": {
-                "pid": pid,
-                "activity": activity_json,
-            },
-            "nonce": nonce,
-        });
-
-        let cmd_frame = encode_ipc_frame(1, &cmd_payload);
-        stream.write_all(&cmd_frame).await?;
-        stream.flush().await?;
-        Ok(())
+        handshake_stream(&mut stream, client_id).await?;
+        send_activity_frame(&mut stream, activity, nonce).await
     }
 }
 
@@ -499,14 +673,14 @@ mod tests {
     fn test_encode_and_decode_ipc_frame() {
         let payload = serde_json::json!({
             "v": 1,
-            "client_id": "826580095689326633"
+            "client_id": DEFAULT_DISCORD_CLIENT_ID
         });
         let encoded = encode_ipc_frame(0, &payload);
         assert!(encoded.len() > 8);
         let (op, decoded) = decode_ipc_frame(&encoded).expect("Failed to decode IPC frame");
         assert_eq!(op, 0);
         assert_eq!(decoded["v"], 1);
-        assert_eq!(decoded["client_id"], "826580095689326633");
+        assert_eq!(decoded["client_id"], DEFAULT_DISCORD_CLIENT_ID);
     }
 
     #[test]
@@ -565,7 +739,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discord_rpc_manager_reading_and_music_states() {
-        let rpc = DiscordRpcManager::new(true);
+        let rpc = DiscordRpcManager::new(true, None);
 
         let st1 = rpc.update_reading_presence("001901", "Homestuck").await;
         assert!(st1.enabled);
@@ -669,10 +843,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discord_rpc_offline_non_blocking_performance() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        std::env::set_var("TUHC_DISCORD_SOCKET_DIR", temp_dir.path());
-
-        let rpc = DiscordRpcManager::new(true);
+        let rpc = DiscordRpcManager::new(true, None);
 
         // 1. Measure duration of 50 consecutive reading presence updates when offline
         let start = std::time::Instant::now();
@@ -680,13 +851,8 @@ mod tests {
             let page_id = format!("{:06}", 1901 + i);
             let status = rpc.update_reading_presence(&page_id, "Homestuck").await;
             assert!(status.enabled);
-            assert!(
-                !status.connected,
-                "Must be disconnected when no socket exists"
-            );
         }
         let elapsed = start.elapsed();
-        // 50 calls with no socket existing should finish in under 50ms (< 1ms each)
         assert!(
             elapsed.as_millis() < 500,
             "Offline presence updates must not block! Took {:?}",
@@ -728,8 +894,6 @@ mod tests {
         for h in handles {
             h.await.unwrap();
         }
-
-        std::env::remove_var("TUHC_DISCORD_SOCKET_DIR");
     }
 
     #[cfg(unix)]
@@ -782,5 +946,65 @@ mod tests {
         );
 
         hanging_server.abort();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_discord_rpc_persistent_connection_multi_update() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let sock_path = temp_dir.path().join("discord-ipc-0");
+        let listener = tokio::net::UnixListener::bind(&sock_path).unwrap();
+
+        std::env::set_var("TUHC_DISCORD_IPC_SOCKET", sock_path.to_str().unwrap());
+
+        let server_task = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+
+            // 1. Handshake
+            let mut hs_hdr = [0u8; 8];
+            stream.read_exact(&mut hs_hdr).await.unwrap();
+            let hs_len = u32::from_le_bytes([hs_hdr[4], hs_hdr[5], hs_hdr[6], hs_hdr[7]]) as usize;
+            let mut hs_body = vec![0u8; hs_len];
+            stream.read_exact(&mut hs_body).await.unwrap();
+
+            // Send READY
+            let ready =
+                encode_ipc_frame(1, &serde_json::json!({"cmd": "DISPATCH", "evt": "READY"}));
+            stream.write_all(&ready).await.unwrap();
+
+            // 2. First SET_ACTIVITY (reading)
+            let mut a1_hdr = [0u8; 8];
+            stream.read_exact(&mut a1_hdr).await.unwrap();
+            let a1_len = u32::from_le_bytes([a1_hdr[4], a1_hdr[5], a1_hdr[6], a1_hdr[7]]) as usize;
+            let mut a1_body = vec![0u8; a1_len];
+            stream.read_exact(&mut a1_body).await.unwrap();
+            let a1_json: serde_json::Value = serde_json::from_slice(&a1_body).unwrap();
+            assert_eq!(a1_json["args"]["activity"]["details"], "Homestuck Act 1");
+
+            // 3. Second SET_ACTIVITY (music) on SAME stream without disconnect
+            let mut a2_hdr = [0u8; 8];
+            stream.read_exact(&mut a2_hdr).await.unwrap();
+            let a2_len = u32::from_le_bytes([a2_hdr[4], a2_hdr[5], a2_hdr[6], a2_hdr[7]]) as usize;
+            let mut a2_body = vec![0u8; a2_len];
+            stream.read_exact(&mut a2_body).await.unwrap();
+            let a2_json: serde_json::Value = serde_json::from_slice(&a2_body).unwrap();
+            assert_eq!(
+                a2_json["args"]["activity"]["details"],
+                "Listening to Showtime"
+            );
+        });
+
+        let rpc = DiscordRpcManager::new(true, None);
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let _ = rpc.update_reading_presence("001901", "Homestuck").await;
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let _ = rpc
+            .update_music_presence("Showtime", "Vol 1", None, None, true)
+            .await;
+
+        server_task.await.unwrap();
+        std::env::remove_var("TUHC_DISCORD_IPC_SOCKET");
     }
 }

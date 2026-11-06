@@ -26,6 +26,7 @@ async fn main() {
     let vfs = Arc::new(Vfs::new(asset_dir.clone()));
     let discord_rpc = Arc::new(tuhc_lib::rpc::DiscordRpcManager::new(
         app_config.settings.enable_discord_rpc,
+        Some(app_config.settings.discord_client_id.clone()),
     ));
 
     let descriptors = mod_registry.get_active_descriptors();

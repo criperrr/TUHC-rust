@@ -396,12 +396,19 @@ pub async fn dispatch_ipc(
             }
 
             // Sync discord RPC setting if changed
-            if state.discord_rpc.get_status().await.enabled
-                != new_config.settings.enable_discord_rpc
-            {
+            let rpc_status = state.discord_rpc.get_status().await;
+            if rpc_status.enabled != new_config.settings.enable_discord_rpc {
                 let _ = state
                     .discord_rpc
                     .set_enabled(new_config.settings.enable_discord_rpc)
+                    .await;
+            }
+            if !new_config.settings.discord_client_id.is_empty()
+                && rpc_status.client_id != new_config.settings.discord_client_id
+            {
+                let _ = state
+                    .discord_rpc
+                    .set_client_id(&new_config.settings.discord_client_id)
                     .await;
             }
 
@@ -560,6 +567,7 @@ pub async fn dispatch_ipc(
                     let page_title = if let Some(t) = args
                         .get("page_title")
                         .or_else(|| args.get("pageTitle"))
+                        .or_else(|| args.get("title"))
                         .and_then(|v| v.as_str())
                     {
                         t.to_string()
@@ -585,6 +593,7 @@ pub async fn dispatch_ipc(
                     let track_title = args
                         .get("track_title")
                         .or_else(|| args.get("trackTitle"))
+                        .or_else(|| args.get("track"))
                         .or_else(|| args.get("track_name"))
                         .or_else(|| args.get("trackName"))
                         .and_then(|v| v.as_str())
@@ -592,6 +601,7 @@ pub async fn dispatch_ipc(
                     let album_name = args
                         .get("album_name")
                         .or_else(|| args.get("albumName"))
+                        .or_else(|| args.get("album"))
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
                     let artist = args.get("artist").and_then(|v| v.as_str());
@@ -626,6 +636,38 @@ pub async fn dispatch_ipc(
                     )
                 }
             }
+        }
+        "set_discord_music_presence" => {
+            let track_title = args
+                .get("track_title")
+                .or_else(|| args.get("trackTitle"))
+                .or_else(|| args.get("track"))
+                .or_else(|| args.get("track_name"))
+                .or_else(|| args.get("trackName"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("Homestuck Music");
+            let album_name = args
+                .get("album_name")
+                .or_else(|| args.get("albumName"))
+                .or_else(|| args.get("album"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let artist = args.get("artist").and_then(|v| v.as_str());
+            let track_id = args
+                .get("track_id")
+                .or_else(|| args.get("trackId"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let playing = parse_bool_arg(args.get("playing"), true);
+
+            let status = state
+                .discord_rpc
+                .update_music_presence(track_title, album_name, artist, track_id, playing)
+                .await;
+            json_response(
+                StatusCode::OK,
+                serde_json::json!({"status": "ok", "presence": status}),
+            )
         }
         "toggle_discord_rpc" => {
             let current = state.discord_rpc.get_status().await.enabled;

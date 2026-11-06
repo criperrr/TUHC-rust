@@ -38,7 +38,7 @@ async fn test_rapid_concurrent_mod_toggles_and_page_fetches() {
         store: store.clone(),
         mods: Arc::new(RwLock::new(mod_registry)),
         vfs: vfs.clone(),
-        discord_rpc: Arc::new(tuhc_lib::rpc::DiscordRpcManager::new(true)),
+        discord_rpc: Arc::new(tuhc_lib::rpc::DiscordRpcManager::new(true, None)),
     };
 
     let stop = Arc::new(AtomicBool::new(false));

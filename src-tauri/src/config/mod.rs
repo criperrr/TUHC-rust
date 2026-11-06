@@ -237,10 +237,20 @@ pub struct AppSettings {
     pub ruffle_fallback: bool,
     #[serde(default = "default_true", alias = "enable_discord_rpc")]
     pub enable_discord_rpc: bool,
+    #[serde(
+        default = "default_discord_client_id",
+        alias = "discord_client_id",
+        alias = "discordClientId"
+    )]
+    pub discord_client_id: String,
     #[serde(default, alias = "mod_list_enabled")]
     pub mod_list_enabled: Vec<String>,
     #[serde(flatten)]
     pub extra: serde_json::Map<String, serde_json::Value>,
+}
+
+fn default_discord_client_id() -> String {
+    crate::rpc::DEFAULT_DISCORD_CLIENT_ID.to_string()
 }
 
 fn default_true() -> bool {
@@ -296,6 +306,7 @@ impl Default for AppSettings {
             cursed_history: false,
             ruffle_fallback: false,
             enable_discord_rpc: true,
+            discord_client_id: default_discord_client_id(),
             mod_list_enabled: Vec::new(),
             extra: serde_json::Map::new(),
         }
@@ -474,5 +485,10 @@ mod tests {
         let json_default = r#"{}"#;
         let s3: AppSettings = serde_json::from_str(json_default).unwrap();
         assert!(s3.enable_discord_rpc);
+        assert_eq!(s3.discord_client_id, crate::rpc::DEFAULT_DISCORD_CLIENT_ID);
+
+        let json_custom_id = r#"{"discordClientId": "1568232968214945812"}"#;
+        let s4: AppSettings = serde_json::from_str(json_custom_id).unwrap();
+        assert_eq!(s4.discord_client_id, "1568232968214945812");
     }
 }
