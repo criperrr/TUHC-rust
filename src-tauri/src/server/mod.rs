@@ -589,6 +589,24 @@ pub async fn dispatch_ipc(
                         serde_json::json!({"status": "ok", "presence": status}),
                     )
                 }
+                "browsing" | "menu" => {
+                    let page_title = args
+                        .get("title")
+                        .or_else(|| args.get("page_title"))
+                        .or_else(|| args.get("pageTitle"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Main Menu");
+                    let details = args.get("details").and_then(|v| v.as_str());
+
+                    let status = state
+                        .discord_rpc
+                        .update_browsing_presence(page_title, details)
+                        .await;
+                    json_response(
+                        StatusCode::OK,
+                        serde_json::json!({"status": "ok", "presence": status}),
+                    )
+                }
                 "music" => {
                     let track_title = args
                         .get("track_title")

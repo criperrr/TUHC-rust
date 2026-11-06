@@ -276,19 +276,55 @@ async fn send_activity_frame<S: AsyncWriteExt + Unpin>(
 ) -> std::io::Result<()> {
     let pid = std::process::id();
     let activity_json = match activity {
-        Some(act) => serde_json::json!({
-            "details": act.details,
-            "state": act.state,
-            "timestamps": {
-                "start": act.start_timestamp,
-            },
-            "assets": {
-                "large_image": act.large_image_key,
-                "large_text": act.large_image_text,
-                "small_image": act.small_image_key,
-                "small_text": act.small_image_text,
+        Some(act) => {
+            let mut map = serde_json::Map::new();
+            if !act.details.trim().is_empty() {
+                map.insert(
+                    "details".to_string(),
+                    serde_json::Value::String(act.details.clone()),
+                );
             }
-        }),
+            if !act.state.trim().is_empty() {
+                map.insert(
+                    "state".to_string(),
+                    serde_json::Value::String(act.state.clone()),
+                );
+            }
+            if act.start_timestamp > 0 {
+                let mut ts_map = serde_json::Map::new();
+                ts_map.insert("start".to_string(), serde_json::json!(act.start_timestamp));
+                map.insert("timestamps".to_string(), serde_json::Value::Object(ts_map));
+            }
+            let mut assets_map = serde_json::Map::new();
+            if !act.large_image_key.trim().is_empty() {
+                assets_map.insert(
+                    "large_image".to_string(),
+                    serde_json::Value::String(act.large_image_key.clone()),
+                );
+            }
+            if !act.large_image_text.trim().is_empty() {
+                assets_map.insert(
+                    "large_text".to_string(),
+                    serde_json::Value::String(act.large_image_text.clone()),
+                );
+            }
+            if !act.small_image_key.trim().is_empty() {
+                assets_map.insert(
+                    "small_image".to_string(),
+                    serde_json::Value::String(act.small_image_key.clone()),
+                );
+            }
+            if !act.small_image_text.trim().is_empty() {
+                assets_map.insert(
+                    "small_text".to_string(),
+                    serde_json::Value::String(act.small_image_text.clone()),
+                );
+            }
+            if !assets_map.is_empty() {
+                map.insert("assets".to_string(), serde_json::Value::Object(assets_map));
+            }
+            serde_json::Value::Object(map)
+        }
         None => serde_json::Value::Null,
     };
 
@@ -440,10 +476,21 @@ async fn run_rpc_worker(
                 }
                 read_res = stream.read(&mut read_buf) => {
                     match read_res {
-                        Ok(0) | Err(_) => {
+                        Ok(0) => {
                             disconnect = true;
                         }
-                        Ok(_) => {}
+                        Ok(n) => {
+                            if let Some((_op, val)) = decode_ipc_frame(&read_buf[..n]) {
+                                if let Some(evt) = val.get("evt").and_then(|v| v.as_str()) {
+                                    if evt == "ERROR" {
+                                        eprintln!("[Discord RPC ERROR] {:?}", val.get("data"));
+                                    }
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            disconnect = true;
+                        }
                     }
                 }
             }
@@ -521,10 +568,14 @@ impl DiscordRpcManager {
         let (tx, rx) = mpsc::channel(32);
 
         let inner_clone = Arc::clone(&inner);
+        let worker_fut = async move {
+            run_rpc_worker(inner_clone, rx, client_id, enabled).await;
+        };
+
         if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            handle.spawn(async move {
-                run_rpc_worker(inner_clone, rx, client_id, enabled).await;
-            });
+            handle.spawn(worker_fut);
+        } else {
+            tauri::async_runtime::spawn(worker_fut);
         }
 
         Self { inner, tx }
@@ -598,6 +649,43 @@ impl DiscordRpcManager {
                 small_image_text: "The Unofficial Homestuck Collection".to_string(),
                 start_timestamp: guard.session_start,
                 page_id: Some(page_id.to_string()),
+                track_id: None,
+            };
+            guard.last_activity = Some(act.clone());
+            act
+        };
+
+        let _ = self.tx.try_send(RpcCommand::UpdateActivity(Some(activity)));
+        self.get_status().await
+    }
+
+    pub async fn update_browsing_presence(
+        &self,
+        title: &str,
+        details: Option<&str>,
+    ) -> DiscordStatus {
+        let det = details
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or("Browsing Collection");
+        let st = if title.trim().is_empty() {
+            "Main Menu"
+        } else {
+            title.trim()
+        };
+
+        let activity = {
+            let mut guard = self.inner.write().await;
+            guard.nonce_counter = guard.nonce_counter.saturating_add(1);
+            let act = DiscordActivity {
+                activity_type: "browsing".to_string(),
+                details: det.to_string(),
+                state: st.to_string(),
+                large_image_key: "homestuck".to_string(),
+                large_image_text: "The Unofficial Homestuck Collection".to_string(),
+                small_image_key: String::new(),
+                small_image_text: String::new(),
+                start_timestamp: guard.session_start,
+                page_id: None,
                 track_id: None,
             };
             guard.last_activity = Some(act.clone());

@@ -250,6 +250,16 @@ pub async fn set_discord_presence(
                 .update_reading_presence(&pid, &title)
                 .await)
         }
+        "browsing" | "menu" => {
+            let page_t = page_title
+                .or(title)
+                .unwrap_or_else(|| "Main Menu".to_string());
+            Ok(state
+                .0
+                .discord_rpc
+                .update_browsing_presence(&page_t, None)
+                .await)
+        }
         "music" => {
             let track_str = track_title
                 .or(track)
