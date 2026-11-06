@@ -216,3 +216,20 @@ Append new entries to the end of this file using the standard template:
 - **Impact / Next Steps:**
   - 100% test pass rate across `cargo test` (30/30 unit + 3/3 adversarial), `tests/e2e_runner.py` (68/68), and `tests/frontend_e2e/run.py` (9/9).
   - Application running in background on display for user inspection.
+
+## `2026-11-06 09:33` - `fix(rpc)`: Implement persistent Discord RPC connection and configurable client ID
+
+- **Description:** Fixed Discord Rich Presence by replacing transient socket connections with a long-lived Tokio background worker supporting automatic reconnection on Unix sockets and Windows named pipes. Updated default application client ID to authentic registered ID 1568232968214945812 (TUHC.rs), added custom client ID configuration in Settings UI, implemented set_discord_music_presence backend command, and aligned IPC payload schemas.
+- **Files Modified:**
+  - `src-tauri/src/rpc/mod.rs`
+  - `src-tauri/src/config/mod.rs`
+  - `src-tauri/src/commands.rs`
+  - `src-tauri/src/lib.rs`
+  - `src-tauri/src/bin/server.rs`
+  - `src-tauri/src/server/mod.rs`
+  - `src-tauri/tests/adversarial_mod_toggle_stress.rs`
+  - `src/js/app.js`
+  - `src/index.html`
+  - `src/styles/main.css`
+  - `.agents/CURRENT.md`
+- **Impact / Next Steps:** Discord Rich Presence stays connected persistently while reading Homestuck or listening to music, without 4000 handshake errors or socket drops.

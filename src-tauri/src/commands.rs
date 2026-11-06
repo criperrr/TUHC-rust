@@ -94,11 +94,21 @@ pub async fn save_config(
         .save()
         .map_err(|e| format!("Failed to save config: {}", e))?;
 
-    if state.0.discord_rpc.get_status().await.enabled != new_config.settings.enable_discord_rpc {
+    let rpc_status = state.0.discord_rpc.get_status().await;
+    if rpc_status.enabled != new_config.settings.enable_discord_rpc {
         let _ = state
             .0
             .discord_rpc
             .set_enabled(new_config.settings.enable_discord_rpc)
+            .await;
+    }
+    if !new_config.settings.discord_client_id.is_empty()
+        && rpc_status.client_id != new_config.settings.discord_client_id
+    {
+        let _ = state
+            .0
+            .discord_rpc
+            .set_client_id(&new_config.settings.discord_client_id)
             .await;
     }
 
@@ -211,9 +221,12 @@ pub async fn set_discord_presence(
     mode: Option<String>,
     page_id: Option<String>,
     page_title: Option<String>,
+    title: Option<String>,
     track_id: Option<String>,
     track_title: Option<String>,
+    track: Option<String>,
     album_name: Option<String>,
+    album: Option<String>,
     artist: Option<String>,
     playing: Option<bool>,
 ) -> Result<DiscordStatus, String> {
@@ -221,9 +234,9 @@ pub async fn set_discord_presence(
     match mode_str {
         "reading" => {
             let pid = page_id.unwrap_or_else(|| "001901".to_string());
-            let title = match page_title {
-                Some(t) => t,
-                None => state
+            let title = match page_title.or(title) {
+                Some(t) if !t.trim().is_empty() => t,
+                _ => state
                     .0
                     .store
                     .get_story_page(&pid)
@@ -238,18 +251,52 @@ pub async fn set_discord_presence(
                 .await)
         }
         "music" => {
-            let title = track_title.unwrap_or_else(|| "Homestuck Music".to_string());
-            let album = album_name.unwrap_or_default();
+            let track_str = track_title
+                .or(track)
+                .unwrap_or_else(|| "Homestuck Music".to_string());
+            let album_str = album_name.or(album).unwrap_or_default();
             let is_playing = playing.unwrap_or(true);
             Ok(state
                 .0
                 .discord_rpc
-                .update_music_presence(&title, &album, artist.as_deref(), track_id, is_playing)
+                .update_music_presence(
+                    &track_str,
+                    &album_str,
+                    artist.as_deref(),
+                    track_id,
+                    is_playing,
+                )
                 .await)
         }
         "clear" => Ok(state.0.discord_rpc.clear_presence().await),
         _ => Ok(state.0.discord_rpc.get_status().await),
     }
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn set_discord_music_presence(
+    state: tauri::State<'_, AppState>,
+    track: Option<String>,
+    track_title: Option<String>,
+    album: Option<String>,
+    album_name: Option<String>,
+    artist: Option<String>,
+    track_id: Option<String>,
+    duration: Option<f64>,
+    playing: Option<bool>,
+) -> Result<DiscordStatus, String> {
+    let _ = duration;
+    let title = track
+        .or(track_title)
+        .unwrap_or_else(|| "Homestuck Music".to_string());
+    let alb = album.or(album_name).unwrap_or_default();
+    let is_playing = playing.unwrap_or(true);
+    Ok(state
+        .0
+        .discord_rpc
+        .update_music_presence(&title, &alb, artist.as_deref(), track_id, is_playing)
+        .await)
 }
 
 #[tauri::command]

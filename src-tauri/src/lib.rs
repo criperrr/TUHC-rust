@@ -39,6 +39,7 @@ pub fn run() {
             let vfs = Arc::new(Vfs::new(asset_dir.clone()));
             let discord_rpc = Arc::new(DiscordRpcManager::new(
                 app_config.settings.enable_discord_rpc,
+                Some(app_config.settings.discord_client_id.clone()),
             ));
 
             let descriptors = mod_registry.get_active_descriptors();
@@ -167,6 +168,7 @@ pub fn run() {
             commands::evaluate_log_button_text,
             commands::get_discord_status,
             commands::set_discord_presence,
+            commands::set_discord_music_presence,
             commands::toggle_discord_rpc,
             commands::trim_memory,
             commands::client_log,

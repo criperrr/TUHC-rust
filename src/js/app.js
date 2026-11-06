@@ -76,6 +76,7 @@
         urlTooltip: true,
         openLogs: false,
         enableDiscordRpc: true,
+        discordClientId: '1568232968214945812',
         textOverride: {
           fontFamily: '',
           bold: false,
@@ -97,6 +98,16 @@
   /* ==========================================================================
      2. Dual-Mode IPC Client & Asset URL Resolver (F07)
      ========================================================================== */
+
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 
   /**
    * Universal IPC Invoker. Automatically uses Tauri IPC internals when available,
@@ -131,6 +142,35 @@
       if (pid) {
         payload.page_id = pid;
         payload.pageId = pid;
+      }
+    }
+
+    if (command === 'set_discord_presence') {
+      const pid = payload.page_id || payload.pageId || payload.id;
+      const title = payload.page_title || payload.pageTitle || payload.title;
+      if (pid) {
+        payload.page_id = pid;
+        payload.pageId = pid;
+      }
+      if (title) {
+        payload.page_title = title;
+        payload.pageTitle = title;
+        payload.title = title;
+      }
+    }
+
+    if (command === 'set_discord_music_presence') {
+      const trk = payload.track || payload.track_title || payload.trackTitle || payload.track_name || payload.trackName;
+      const alb = payload.album || payload.album_name || payload.albumName;
+      if (trk) {
+        payload.track = trk;
+        payload.track_title = trk;
+        payload.trackTitle = trk;
+      }
+      if (alb) {
+        payload.album = alb;
+        payload.album_name = alb;
+        payload.albumName = alb;
       }
     }
 
@@ -787,9 +827,18 @@
 
     // Direct system routes
     if (url === '/settings') return { mode: 'SETTINGS' };
-    if (url === '/help') return { mode: 'HELP' };
+    if (url.startsWith('/help')) return { mode: 'HELP' };
+    if (url.startsWith('/news')) return { mode: 'NEWS' };
+    if (url.startsWith('/unlock')) {
+      const parts = url.split('/').filter(Boolean);
+      return { mode: 'UNLOCK', sub: parts[1] || '' };
+    }
+    if (url.startsWith('/decode')) {
+      const parts = url.split('/').filter(Boolean);
+      return { mode: 'DECODE', sub: parts[1] || '' };
+    }
     if (url === '/evenmore') return { mode: 'EVENMORE' };
-    if (url === '/credits') return { mode: 'CREDITS' };
+    if (url.startsWith('/credits')) return { mode: 'CREDITS' };
     if (url.startsWith('/log')) {
       const parts = url.split('/').filter(Boolean);
       return { mode: 'LOG', storyId: parts[1] || '6' };
@@ -1144,14 +1193,41 @@
       const theme = computeActiveTheme(page.theme, state.config.settings);
       applyTheme(theme);
 
+      // Top Act Milestone & Scratch Banner (Cascade, Collide, Act 7, X2COMBO, Scratch)
+      const bannerContainer = document.getElementById('page-banner-container');
+      const num = parseInt(pageId, 10);
+      let bannerSrc = null;
+      if (page.theme === 'scratch' && page.scratchBanner) {
+        bannerSrc = resolveAssetUrl(`/storyfiles/hs2/scratch/${page.scratchBanner}`);
+      } else if (page.theme === 'cascade' || num === 6009) {
+        bannerSrc = resolveAssetUrl('/images/header_cascade.gif');
+      } else if (page.flag && page.flag.includes('X2COMBO')) {
+        bannerSrc = resolveAssetUrl('/images/act6act5act1x2combo.gif');
+      } else if (num === 9987) {
+        bannerSrc = resolveAssetUrl('/images/collide_header.gif');
+      } else if (num === 10027) {
+        bannerSrc = resolveAssetUrl('/images/act7_header.gif');
+      }
+
+      if (bannerContainer) {
+        if (bannerSrc) {
+          bannerContainer.innerHTML = `<img src="${bannerSrc}" class="bannerImage" alt="Act Header Banner" />`;
+          bannerContainer.style.display = 'flex';
+        } else {
+          bannerContainer.innerHTML = '';
+          bannerContainer.style.display = 'none';
+        }
+      }
+
       // Auto-save reading progress for Homestuck
       updateReadingProgress(pageId);
 
       // Discord RPC Reading Notification
       if (state.config.settings.enableDiscordRpc) {
         ipcInvoke('set_discord_presence', {
+          mode: 'reading',
           page_id: pageId,
-          title: pageTitle
+          page_title: pageTitle
         }).catch(() => {});
       }
 
@@ -1965,6 +2041,10 @@
             <label for="setting-discord-rpc">Enable Discord Rich Presence (RPC):</label>
             <input type="checkbox" id="setting-discord-rpc" ${settings.enableDiscordRpc ? 'checked' : ''} />
           </div>
+          <div class="settingRow" style="margin-top: 8px;">
+            <label for="setting-discord-client-id" style="font-size: 11px;">Application Client ID:</label>
+            <input type="text" id="setting-discord-client-id" value="${escapeHtml(settings.discordClientId || settings.discord_client_id || '1568232968214945812')}" placeholder="1568232968214945812" style="width: 220px; padding: 3px 6px; font-family: monospace; font-size: 11px;" />
+          </div>
         </div>
 
         <!-- Section 5: Community Mods -->
@@ -2065,6 +2145,16 @@
       discordBox.addEventListener('change', (e) => {
         settings.enableDiscordRpc = e.target.checked;
         ipcInvoke('toggle_discord_rpc', { enabled: e.target.checked }).catch(() => {});
+        persistConfig();
+      });
+    }
+
+    const discordClientIdInput = container.querySelector('#setting-discord-client-id');
+    if (discordClientIdInput) {
+      discordClientIdInput.addEventListener('change', (e) => {
+        const val = e.target.value.trim() || '1568232968214945812';
+        settings.discordClientId = val;
+        settings.discord_client_id = val;
         persistConfig();
       });
     }
@@ -2348,7 +2438,9 @@
       <div class="card logoCard">
         <a href="/" class="cardContent">
           <div class="topLogo">
-            <img src="${resolveAssetUrl('/archive/collection/logo_v2_static.png')}" alt="The Unofficial Homestuck Collection" />
+            <video class="collectionLogo" src="${resolveAssetUrl('/archive/collection/logo_v2_full.webm')}" poster="${resolveAssetUrl('/assets/collection_logo.gif')}" autoplay loop muted playsinline style="width: 800px; max-width: 100%; display: block; margin: 0 auto;">
+              <img src="${resolveAssetUrl('/assets/collection_logo.gif')}" alt="The Unofficial Homestuck Collection" class="collectionLogo" style="width: 800px; max-width: 100%; display: block; margin: 0 auto;" />
+            </video>
           </div>
         </a>
         <div class="cardContent collection"></div>

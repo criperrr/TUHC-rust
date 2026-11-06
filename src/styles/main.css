@@ -16,7 +16,8 @@
 
 @font-face {
   font-family: "Courier Prime";
-  src: url("/fonts/courier-prime/Courier Prime.ttf") format("truetype"),
+  src: url("/fonts/courier-prime/Courier%20Prime.ttf") format("truetype"),
+       url("/fonts/courier-prime/Courier Prime.ttf") format("truetype"),
        local("Courier Prime"), local("Courier New");
   font-weight: 400;
   font-style: normal;
@@ -25,7 +26,8 @@
 
 @font-face {
   font-family: "Courier Prime";
-  src: url("/fonts/courier-prime/Courier Prime Bold.ttf") format("truetype"),
+  src: url("/fonts/courier-prime/Courier%20Prime%20Bold.ttf") format("truetype"),
+       url("/fonts/courier-prime/Courier Prime Bold.ttf") format("truetype"),
        local("Courier Prime Bold"), local("Courier New Bold");
   font-weight: 700;
   font-style: normal;
@@ -34,7 +36,8 @@
 
 @font-face {
   font-family: "Courier Prime";
-  src: url("/fonts/courier-prime/Courier Prime Italic.ttf") format("truetype"),
+  src: url("/fonts/courier-prime/Courier%20Prime%20Italic.ttf") format("truetype"),
+       url("/fonts/courier-prime/Courier Prime Italic.ttf") format("truetype"),
        local("Courier Prime Italic"), local("Courier New Italic");
   font-weight: 400;
   font-style: italic;
@@ -43,7 +46,8 @@
 
 @font-face {
   font-family: "Courier Prime";
-  src: url("/fonts/courier-prime/Courier Prime Bold Italic.ttf") format("truetype"),
+  src: url("/fonts/courier-prime/Courier%20Prime%20Bold%20Italic.ttf") format("truetype"),
+       url("/fonts/courier-prime/Courier Prime Bold Italic.ttf") format("truetype"),
        local("Courier Prime Bold Italic"), local("Courier New Bold Italic");
   font-weight: 700;
   font-style: italic;
@@ -371,6 +375,12 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
 body.pixel-scaling img {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -630,6 +640,7 @@ a:visited {
   background: var(--header-tabSection);
   color: var(--font-header);
   border: none;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
 }
 
 .tab:not(.activeTab):hover {
@@ -649,6 +660,7 @@ a:visited {
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 12px;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
 }
 
 .closeTabButton {
@@ -890,7 +902,7 @@ nav.navBanner,
 
 .customNavBanner .navList .candyCorn {
   margin: 0 9px;
-  content: url(/assets/images/candycorn.gif);
+  content: url(/images/candycorn.gif);
   width: 8px;
   height: 11px;
   display: inline-block;
@@ -1014,6 +1026,23 @@ nav.navBanner,
   justify-content: space-between;
   align-items: center;
   user-select: none;
+}
+
+.bannerDiv {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 950px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.bannerDiv img.bannerImage {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
 }
 
 .bannerImage {
