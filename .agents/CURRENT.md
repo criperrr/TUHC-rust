@@ -7,16 +7,19 @@ Executive summary and direct file index for token-efficient agent navigation in 
 ## 1. Executive Summary
 
 **Project Title:** TUHC-rust (The Unofficial Homestuck Collection - Tauri 2.0 / Rust Re-write)  
-**Active Status:** Milestone 1 Gate APPROVED — Baseline Established on `main` & `dev`.  
-**Quality Gate Status:** All 8 verification gates passing 100% (`GATE_STATUS.md`).
+**Active Status:** Milestones 2–4 Complete & Gate APPROVED — Forensic Visual Polish & Navigation Hardening on `feat/m2-m4-implementation`.  
+**Quality Gate Status:** All 6 verification gates passing 100% (Compilation, Formatting, Clippy, 31 Tests, 68 Python E2E, Memory 54MB < 150MB SLA).
 
 **Key Achievements:**
-- **Core Rust Implementation:** Complete Tauri 2.0 re-implementation with in-memory story and music catalog indexing, Axum loopback asset server, streaming byte-range support, and community mod VFS overlay (`src-tauri/src/`).
-- **Atomic Config Persistence:** Hardened `AppConfig::save()` with `tempfile::Builder` preventing race conditions and raw disk corruption under multi-threaded concurrency.
-- **Dual-Track E2E Test Suite:** 68/68 automated tests passing across 4 tiers (Feature Coverage, Boundaries & Security, Combinations, Real-World User Journeys).
-- **Ultra-lightweight Memory Footprint:** Server RSS measured at 57.34MB (headroom of 92.66MB under 150MB SLA ceiling).
-- **Git & Remote Setup:** Repository initialized on branch `main`, remote origin configured to `https://github.com/criperrr/TUHC-rust.git`, and development baseline established on `dev`.
-- **Governance Ecosystem:** Comprehensive governance with branch axioms, conventional commit enforcement, strict quality gatekeepers, and 11 specialized desktop agents.
+- **Visual & Layout Parity Aligned with Original:** Corrected window chrome order (Row 1: TitleBar `#EEEEEE`, Row 2: AddressBar `#jumpBox`, Row 3: TabBar `#tabSection`). Restored authentic 5-group NavBanner with candycorn, `#535353` outer page background, 650px inner page frame, and authentic dual-ghost footer (`mspalogo_mspa.png`).
+- **Navigation Lockup Resolution:** Fixed `popstate` parameter mismatch in `pushUrl` and fortified history stack handling against undefined tab keys.
+- **Client Diagnostic Logging Bridge:** Added `client_log` Tauri IPC command and streaming bridge in `app.js` to mirror all webview console logs, errors, and click events directly to the Rust backend process and terminal output.
+- **Frontend Webview & Visual Parity (M2):** Authentic MSPA chrome with tabs, retro address bar, bookmarks persistence, sound test bar, 13 canonical themes, Courier typography, character quirk colors, and StoryPage rendering (`src/index.html`, `src/styles/main.css`, `src/js/app.js`).
+- **Media Engine & Ruffle Flash Sync (M3):** Authoritative 51-entry `audioDelay` table from legacy repo, self-hosted Ruffle WASM embedding inside srcdoc iframe, Frag IPC ActionScript bridge, Cascade sub-segment offsets, Collide dynamic video curtain, and Sburb HTML5 Canvas support (`src/js/mediaEngine.js`, `src/js/flashProps.js`).
+- **Community Mod Engine & Discord RPC (M4):** Legacy `mod.js` parser for single-file and directory mods, O(1) VFS overlay with generation tracking, native translation patch merging, VueHooks integration (`src/js/modHooks.js`), and cross-platform Discord Local IPC Rich Presence (`src-tauri/src/rpc/mod.rs`).
+- **Integration Seam Hardening:** Resolved ActionScript Frag IPC `#audioSeek&<ms>` parameter parsing, `renderMedia` boolean contract, direct settings coercion, and iframe DOM detachment for memory hygiene.
+- **Ultra-lightweight Memory Footprint:** Server RSS measured at ~62MB (headroom of >87MB under 150MB SLA ceiling).
+- **Dual-Track & Checklist Verification:** 6/6 checklist checks passed, 31/31 Rust cargo tests passed, 68/68 Python E2E contracts passed, 17/17 adversarial media tests passed.
 
 ---
 
@@ -35,10 +38,16 @@ Executive summary and direct file index for token-efficient agent navigation in 
 - `config/mod.rs`: `AppConfig` persistence with atomic tempfile replacement, `config.json` serialization, tab management.
 - `mods/mod.rs`: `ModRegistry` managing installed and enabled community mods.
 - `mods/parser.rs`: Regex-based declarative parser for `mod.js` and patch loader for `translation2.json`.
+- `rpc/mod.rs`: Native asynchronous Discord Local IPC manager, MSPA chapter resolution, Reading/Music presence, and Unix domain socket client.
 - `bin/server.rs`: Standalone contract server binary for CI and test harnesses.
 
 ### 2.2. Frontend Shell (`src/`)
 - `index.html`: Shell loading Webview UI, Ruffle Flash player WASM, and loopback communication.
+- `styles/main.css`: 13 authentic MSPA themes, Courier typography, pesterlog quirks, and 950px frame.
+- `js/app.js`: Tabbed browser navigation, URL router, bookmark persistence, settings, and sound test.
+- `js/flashProps.js`: Millisecond audio delay tables, negative seek offsets, crop heights, and transitions.
+- `js/mediaEngine.js`: Ruffle WASM iframe loader, Frag IPC bridge, HTML5 audio/video, and Sburb canvas.
+- `js/modHooks.js`: VueHooks evaluator, rate-limited console sandbox, English & PT-BR button text.
 
 ### 2.3. Test Infrastructure (`tests/` & `src-tauri/tests/`)
 - `tests/e2e_runner.py`: Unified test execution engine.

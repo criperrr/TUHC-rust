@@ -99,12 +99,16 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
     let method = req.method().clone();
     if method == Method::OPTIONS {
         let mut res = StatusCode::NO_CONTENT.into_response();
-        add_cors_headers(res.headers_mut());
+        let headers = res.headers_mut();
+        add_cors_headers(headers);
+        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
         return res;
     }
     if method != Method::GET && method != Method::HEAD {
         let mut res = StatusCode::METHOD_NOT_ALLOWED.into_response();
-        add_cors_headers(res.headers_mut());
+        let headers = res.headers_mut();
+        add_cors_headers(headers);
+        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
         return res;
     }
 
@@ -113,7 +117,9 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
         Some(p) => p,
         None => {
             let mut res = (StatusCode::NOT_FOUND, "Asset Not Found").into_response();
-            add_cors_headers(res.headers_mut());
+            let headers = res.headers_mut();
+            add_cors_headers(headers);
+            headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
             return res;
         }
     };
@@ -122,7 +128,9 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
         Ok(m) if m.is_file() => m,
         _ => {
             let mut res = (StatusCode::NOT_FOUND, "Asset Not Found").into_response();
-            add_cors_headers(res.headers_mut());
+            let headers = res.headers_mut();
+            add_cors_headers(headers);
+            headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
             return res;
         }
     };
@@ -141,11 +149,13 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
             Err(_) => {
                 let mut res =
                     (StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response();
-                res.headers_mut().insert(
+                let headers = res.headers_mut();
+                headers.insert(
                     header::CONTENT_RANGE,
                     HeaderValue::from_str(&format!("bytes */{}", file_size)).unwrap(),
                 );
-                add_cors_headers(res.headers_mut());
+                headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+                add_cors_headers(headers);
                 return res;
             }
         };
@@ -163,11 +173,13 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
         if start > end || start >= file_size || end >= file_size {
             let mut res =
                 (StatusCode::RANGE_NOT_SATISFIABLE, "Range Not Satisfiable").into_response();
-            res.headers_mut().insert(
+            let headers = res.headers_mut();
+            headers.insert(
                 header::CONTENT_RANGE,
                 HeaderValue::from_str(&format!("bytes */{}", file_size)).unwrap(),
             );
-            add_cors_headers(res.headers_mut());
+            headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+            add_cors_headers(headers);
             return res;
         }
 
@@ -179,7 +191,9 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
                 Ok(mut file) => {
                     if file.seek(SeekFrom::Start(start)).await.is_err() {
                         let mut err_res = StatusCode::INTERNAL_SERVER_ERROR.into_response();
-                        add_cors_headers(err_res.headers_mut());
+                        let headers = err_res.headers_mut();
+                        add_cors_headers(headers);
+                        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
                         return err_res;
                     }
                     let limited = file.take(length);
@@ -188,7 +202,9 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
                 }
                 Err(_) => {
                     let mut err_res = StatusCode::INTERNAL_SERVER_ERROR.into_response();
-                    add_cors_headers(err_res.headers_mut());
+                    let headers = err_res.headers_mut();
+                    add_cors_headers(headers);
+                    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
                     return err_res;
                 }
             }
@@ -205,9 +221,61 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
             HeaderValue::from_str(&format!("bytes {}-{}/{}", start, end, file_size)).unwrap(),
         );
         headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
+        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
         add_cors_headers(headers);
 
         return res;
+    }
+
+    // Special handling for Sburb Openbound (05260, 05305, 05395): rewrite assets:// -> /assets/
+    let resolved_str = resolved_path.to_string_lossy();
+    let is_sburb = resolved_str.contains("05260")
+        || resolved_str.contains("05305")
+        || resolved_str.contains("05395")
+        || uri_path.contains("05260")
+        || uri_path.contains("05305")
+        || uri_path.contains("05395");
+
+    let is_html = resolved_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("html") || e.eq_ignore_ascii_case("htm"))
+        .unwrap_or(false);
+
+    let is_xml = resolved_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("xml"))
+        .unwrap_or(false);
+
+    if is_sburb && (is_html || is_xml) && method == Method::GET {
+        if let Ok(mut text) = tokio::fs::read_to_string(&resolved_path).await {
+            text = text.replace("assets://", "/assets/");
+            if is_html {
+                const SHIM: &str = "<script>(function(){var origOpen=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){var args=Array.prototype.slice.call(arguments);if(typeof args[1]==='string'&&args[1].indexOf('assets'+'://')===0){args[1]='/assets/'+args[1].slice(9);}return origOpen.apply(this,args);};})();</script>";
+                if let Some(pos) = text.find("<head>") {
+                    text.insert_str(pos + "<head>".len(), SHIM);
+                } else if let Some(pos) = text.find("<HEAD>") {
+                    text.insert_str(pos + "<HEAD>".len(), SHIM);
+                } else {
+                    text = format!("{}{}", SHIM, text);
+                }
+            }
+
+            let bytes = text.into_bytes();
+            let length = bytes.len();
+            let mut res = (StatusCode::OK, Body::from(bytes)).into_response();
+            let headers = res.headers_mut();
+            headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(mime_type));
+            headers.insert(
+                header::CONTENT_LENGTH,
+                HeaderValue::from_str(&length.to_string()).unwrap(),
+            );
+            headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
+            headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+            add_cors_headers(headers);
+            return res;
+        }
     }
 
     // Full content response (200 OK)
@@ -221,7 +289,9 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
             }
             Err(_) => {
                 let mut err_res = StatusCode::INTERNAL_SERVER_ERROR.into_response();
-                add_cors_headers(err_res.headers_mut());
+                let headers = err_res.headers_mut();
+                add_cors_headers(headers);
+                headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
                 return err_res;
             }
         }
@@ -234,6 +304,7 @@ pub async fn handle_asset_request(vfs: &Vfs, req: Request<Body>) -> Response {
         HeaderValue::from_str(&file_size.to_string()).unwrap(),
     );
     headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
     add_cors_headers(headers);
 
     res
@@ -289,5 +360,39 @@ mod tests {
         assert!(parse_range_header("bytes=abc-def").is_err());
         assert!(parse_range_header("bytes=1-2-3").is_err());
         assert!(parse_range_header("bytes=-").is_err());
+    }
+
+    #[tokio::test]
+    async fn test_sburb_rewriting_and_cache_control() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base_dir = temp_dir.path().join("base");
+        let sburb_dir = base_dir.join("storyfiles/hs2/05260");
+        std::fs::create_dir_all(&sburb_dir).unwrap();
+
+        let html_file = sburb_dir.join("05260.html");
+        let html_content = "<!DOCTYPE html><html><head><title>Sburb</title><script src=\"assets://storyfiles/hs2/05260/Sburb.min.js\"></script></head><body></body></html>";
+        std::fs::write(&html_file, html_content).unwrap();
+
+        let vfs = Vfs::new(base_dir);
+        let req = axum::http::Request::builder()
+            .method(Method::GET)
+            .uri("/assets/storyfiles/hs2/05260/05260.html")
+            .body(Body::empty())
+            .unwrap();
+
+        let res = handle_asset_request(&vfs, req).await;
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(
+            res.headers().get(header::CACHE_CONTROL).unwrap(),
+            "no-cache"
+        );
+
+        let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+        assert!(!body_str.contains("assets://"));
+        assert!(body_str.contains("/assets/storyfiles/hs2/05260/Sburb.min.js"));
+        assert!(body_str.contains("XMLHttpRequest.prototype.open"));
     }
 }

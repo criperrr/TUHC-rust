@@ -235,6 +235,8 @@ pub struct AppSettings {
     pub cursed_history: bool,
     #[serde(default, alias = "ruffle_fallback")]
     pub ruffle_fallback: bool,
+    #[serde(default = "default_true", alias = "enable_discord_rpc")]
+    pub enable_discord_rpc: bool,
     #[serde(default, alias = "mod_list_enabled")]
     pub mod_list_enabled: Vec<String>,
     #[serde(flatten)]
@@ -293,6 +295,7 @@ impl Default for AppSettings {
             pxs_tavros: false,
             cursed_history: false,
             ruffle_fallback: false,
+            enable_discord_rpc: true,
             mod_list_enabled: Vec::new(),
             extra: serde_json::Map::new(),
         }
@@ -439,6 +442,22 @@ mod tests {
         assert_eq!(loaded.tab_data.active_tab_key, "001");
         assert_eq!(loaded.settings.mod_list_enabled, vec!["Homestuck PT-BR"]);
         assert!(loaded.settings.notifications);
+        assert!(loaded.settings.enable_discord_rpc);
         assert_eq!(loaded.app_version, "2.8.1");
+    }
+
+    #[test]
+    fn test_enable_discord_rpc_aliases() {
+        let json_camel = r#"{"enableDiscordRpc": false}"#;
+        let s1: AppSettings = serde_json::from_str(json_camel).unwrap();
+        assert!(!s1.enable_discord_rpc);
+
+        let json_snake = r#"{"enable_discord_rpc": false}"#;
+        let s2: AppSettings = serde_json::from_str(json_snake).unwrap();
+        assert!(!s2.enable_discord_rpc);
+
+        let json_default = r#"{}"#;
+        let s3: AppSettings = serde_json::from_str(json_default).unwrap();
+        assert!(s3.enable_discord_rpc);
     }
 }

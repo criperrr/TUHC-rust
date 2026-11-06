@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
@@ -19,6 +19,7 @@ use tokio::sync::RwLock;
 use crate::config::AppConfig;
 use crate::data::ArchiveStore;
 use crate::mods::ModRegistry;
+use crate::rpc::DiscordRpcManager;
 pub use vfs::{ActiveModDescriptor, Vfs};
 
 #[derive(Clone)]
@@ -29,6 +30,7 @@ pub struct AppStateInner {
     pub store: Arc<ArchiveStore>,
     pub mods: Arc<RwLock<ModRegistry>>,
     pub vfs: Arc<Vfs>,
+    pub discord_rpc: Arc<DiscordRpcManager>,
 }
 
 pub struct AssetServerHandle {
@@ -47,12 +49,58 @@ fn json_response(status: StatusCode, val: serde_json::Value) -> Response {
         header::CONTENT_TYPE,
         HeaderValue::from_static("application/json"),
     );
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
     handler::add_cors_headers(headers);
     res
 }
 
-async fn serve_html_shell() -> Response {
-    let content = b"<!DOCTYPE html><html><head><title>The Unofficial Homestuck Collection</title></head><body><div id='app'>TUHC Webview Shell</div></body></html>";
+fn get_frontend_src_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("TUHC_FRONTEND_SRC") {
+        let p = PathBuf::from(dir);
+        if p.is_dir() {
+            return p;
+        }
+    }
+    let manifest_parent = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(|p| p.join("src"));
+    if let Some(p) = manifest_parent {
+        if p.is_dir() {
+            return p;
+        }
+    }
+    let cur_src = PathBuf::from("src");
+    if cur_src.is_dir() {
+        return cur_src;
+    }
+    let parent_src = PathBuf::from("../src");
+    if parent_src.is_dir() {
+        return parent_src;
+    }
+    PathBuf::from("src")
+}
+
+async fn serve_index_html() -> Response {
+    let src_dir = get_frontend_src_dir();
+    let index_file = src_dir.join("index.html");
+    if let Ok(bytes) = std::fs::read(&index_file) {
+        if let Ok(s) = std::str::from_utf8(&bytes) {
+            if s.contains("The Unofficial Homestuck Collection") {
+                let mut res = (StatusCode::OK, bytes).into_response();
+                let headers = res.headers_mut();
+                headers.insert(
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_static("text/html; charset=utf-8"),
+                );
+                headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+                handler::add_cors_headers(headers);
+                return res;
+            }
+        }
+    }
+
+    // Clean built-in fallback shell
+    let content = b"<!DOCTYPE html><html><head><meta charset='utf-8'><title>The Unofficial Homestuck Collection</title><link rel='stylesheet' href='/styles/main.css'></head><body><div id='app'>The Unofficial Homestuck Collection Webview Shell</div></body></html>";
     let mut res = (StatusCode::OK, content.as_slice()).into_response();
     let headers = res.headers_mut();
     headers.insert(
@@ -63,20 +111,79 @@ async fn serve_html_shell() -> Response {
         header::CONTENT_LENGTH,
         HeaderValue::from_str(&content.len().to_string()).unwrap(),
     );
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
     handler::add_cors_headers(headers);
     res
 }
 
-async fn serve_main_css() -> Response {
+async fn serve_style_file(style_path: &str) -> Response {
+    let clean_rel = style_path.trim_start_matches('/');
+    let src_dir = get_frontend_src_dir();
+    let file = src_dir.join("styles").join(clean_rel);
+
+    if file.is_file() {
+        if let Ok(bytes) = std::fs::read(&file) {
+            let mut res = (StatusCode::OK, bytes).into_response();
+            let headers = res.headers_mut();
+            headers.insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/css; charset=utf-8"),
+            );
+            headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+            handler::add_cors_headers(headers);
+            return res;
+        }
+    }
+
+    // Built-in fallback
     let css_data =
         b"body { font-family: 'Courier New', monospace; background: #000; color: #fff; }";
     let mut res = (StatusCode::OK, css_data.as_slice()).into_response();
     let headers = res.headers_mut();
-    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/css"));
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/css; charset=utf-8"),
+    );
     headers.insert(
         header::CONTENT_LENGTH,
         HeaderValue::from_str(&css_data.len().to_string()).unwrap(),
     );
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+    handler::add_cors_headers(headers);
+    res
+}
+
+async fn serve_js_file(js_path: &str) -> Response {
+    let clean_rel = js_path.trim_start_matches('/');
+    let src_dir = get_frontend_src_dir();
+    let file = src_dir.join("js").join(clean_rel);
+
+    if file.is_file() {
+        if let Ok(bytes) = std::fs::read(&file) {
+            let mut res = (StatusCode::OK, bytes).into_response();
+            let headers = res.headers_mut();
+            headers.insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("application/javascript; charset=utf-8"),
+            );
+            headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+            handler::add_cors_headers(headers);
+            return res;
+        }
+    }
+
+    // Fallback JS
+    let js_data = format!(
+        "/* fallback {} */\nconsole.log('TUHC dynamic js loaded: {}');",
+        clean_rel, clean_rel
+    );
+    let mut res = (StatusCode::OK, js_data.into_bytes()).into_response();
+    let headers = res.headers_mut();
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/javascript; charset=utf-8"),
+    );
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
     handler::add_cors_headers(headers);
     res
 }
@@ -100,21 +207,21 @@ fn parse_bool_arg(val: Option<&serde_json::Value>, default: bool) -> bool {
                 Some(0) => Some(false),
                 _ => None,
             })
-            .or_else(|| {
-                v.as_str()
-                    .and_then(|s| match s.trim().to_ascii_lowercase().as_str() {
-                        "true" | "1" | "yes" | "on" => Some(true),
-                        "false" | "0" | "no" | "off" => Some(false),
-                        _ => None,
-                    })
+            .or_else(|| match v.as_str() {
+                Some(s) if s.eq_ignore_ascii_case("true") || s == "1" => Some(true),
+                Some(s) if s.eq_ignore_ascii_case("false") || s == "0" => Some(false),
+                _ => None,
             })
     })
     .unwrap_or(default)
 }
 
-/// Extracts page_id supporting "page_id" or "id" as string or positive integer
+/// Extracts page_id supporting "page_id", "pageId", or "id" as string or positive integer
 fn parse_page_id_arg(args: &serde_json::Value) -> Option<String> {
-    let raw = args.get("page_id").or_else(|| args.get("id"))?;
+    let raw = args
+        .get("page_id")
+        .or_else(|| args.get("pageId"))
+        .or_else(|| args.get("id"))?;
     if let Some(s) = raw.as_str() {
         let trimmed = s.trim();
         if trimmed.is_empty() || trimmed.starts_with('-') || trimmed == "000000" {
@@ -144,6 +251,8 @@ pub async fn dispatch_ipc(
                 "version": "2.8.1",
                 "asset_dir": state.asset_dir.to_string_lossy(),
                 "asset_port": state.asset_port,
+                "overlay_generation": state.vfs.generation(),
+                "overlayGeneration": state.vfs.generation(),
             });
             json_response(StatusCode::OK, info)
         }
@@ -159,13 +268,21 @@ pub async fn dispatch_ipc(
             };
 
             match state.store.get_story_page(&page_id).await {
-                Some(page) => match serde_json::to_value(&page) {
-                    Ok(v) => json_response(StatusCode::OK, v),
-                    Err(e) => json_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        serde_json::json!({"error": e.to_string()}),
-                    ),
-                },
+                Some(page) => {
+                    if state.config.read().await.settings.enable_discord_rpc {
+                        let _ = state
+                            .discord_rpc
+                            .update_reading_presence(&page.page_id, &page.title)
+                            .await;
+                    }
+                    match serde_json::to_value(&page) {
+                        Ok(v) => json_response(StatusCode::OK, v),
+                        Err(e) => json_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            serde_json::json!({"error": e.to_string()}),
+                        ),
+                    }
+                }
                 None => json_response(
                     StatusCode::NOT_FOUND,
                     serde_json::json!({"error": format!("Page '{}' not found", page_id)}),
@@ -202,6 +319,10 @@ pub async fn dispatch_ipc(
         "save_config" => {
             let config_val = if let Some(c) = args.get("config") {
                 c
+            } else if let Some(c) = args.get("new_config") {
+                c
+            } else if let Some(c) = args.get("newConfig") {
+                c
             } else if args.is_object() && args.get("settings").is_some() {
                 args
             } else {
@@ -226,6 +347,16 @@ pub async fn dispatch_ipc(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     serde_json::json!({"error": format!("Failed to save config: {}", e)}),
                 );
+            }
+
+            // Sync discord RPC setting if changed
+            if state.discord_rpc.get_status().await.enabled
+                != new_config.settings.enable_discord_rpc
+            {
+                let _ = state
+                    .discord_rpc
+                    .set_enabled(new_config.settings.enable_discord_rpc)
+                    .await;
             }
 
             {
@@ -265,6 +396,8 @@ pub async fn dispatch_ipc(
         }
         "toggle_mod" => {
             let mod_id = if let Some(m) = args.get("mod_id").and_then(|v| v.as_str()) {
+                m.to_string()
+            } else if let Some(m) = args.get("modId").and_then(|v| v.as_str()) {
                 m.to_string()
             } else if let Some(m) = args.get("id").and_then(|v| v.as_str()) {
                 m.to_string()
@@ -317,11 +450,162 @@ pub async fn dispatch_ipc(
 
             json_response(
                 StatusCode::OK,
-                serde_json::json!({"status": "ok", "mod_id": mod_id, "enabled": enabled}),
+                serde_json::json!({
+                    "status": "ok",
+                    "mod_id": mod_id,
+                    "enabled": enabled,
+                    "overlay_generation": state.vfs.generation(),
+                    "overlayGeneration": state.vfs.generation(),
+                }),
+            )
+        }
+        "get_mod_hooks" => {
+            let mods_lock = state.mods.read().await;
+            let hooks = mods_lock.get_active_vue_hooks();
+            json_response(
+                StatusCode::OK,
+                serde_json::json!({
+                    "vueHooks": hooks,
+                    "overlayGeneration": state.vfs.generation(),
+                    "overlay_generation": state.vfs.generation(),
+                }),
+            )
+        }
+        "evaluate_log_button_text" => {
+            let content = args
+                .get("content")
+                .and_then(|v| v.as_str())
+                .or_else(|| args.get("raw_content").and_then(|v| v.as_str()))
+                .unwrap_or("");
+            let log_hidden = parse_bool_arg(
+                args.get("log_hidden").or_else(|| args.get("logHidden")),
+                true,
+            );
+            let mods_lock = state.mods.read().await;
+            let text = mods_lock.evaluate_log_button_text(content, log_hidden);
+            json_response(
+                StatusCode::OK,
+                serde_json::json!({
+                    "text": text,
+                    "log_hidden": log_hidden,
+                    "logHidden": log_hidden,
+                }),
+            )
+        }
+        "get_discord_status" => {
+            let status = state.discord_rpc.get_status().await;
+            match serde_json::to_value(&status) {
+                Ok(v) => json_response(StatusCode::OK, v),
+                Err(e) => json_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    serde_json::json!({"error": e.to_string()}),
+                ),
+            }
+        }
+        "set_discord_presence" => {
+            let mode = args
+                .get("mode")
+                .and_then(|v| v.as_str())
+                .unwrap_or("reading");
+
+            match mode {
+                "reading" => {
+                    let page_id = parse_page_id_arg(args).unwrap_or_else(|| "001901".to_string());
+                    let page_title = if let Some(t) = args
+                        .get("page_title")
+                        .or_else(|| args.get("pageTitle"))
+                        .and_then(|v| v.as_str())
+                    {
+                        t.to_string()
+                    } else {
+                        state
+                            .store
+                            .get_story_page(&page_id)
+                            .await
+                            .map(|p| p.title)
+                            .unwrap_or_else(|| "Homestuck".to_string())
+                    };
+
+                    let status = state
+                        .discord_rpc
+                        .update_reading_presence(&page_id, &page_title)
+                        .await;
+                    json_response(
+                        StatusCode::OK,
+                        serde_json::json!({"status": "ok", "presence": status}),
+                    )
+                }
+                "music" => {
+                    let track_title = args
+                        .get("track_title")
+                        .or_else(|| args.get("trackTitle"))
+                        .or_else(|| args.get("track_name"))
+                        .or_else(|| args.get("trackName"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Homestuck Music");
+                    let album_name = args
+                        .get("album_name")
+                        .or_else(|| args.get("albumName"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let artist = args.get("artist").and_then(|v| v.as_str());
+                    let track_id = args
+                        .get("track_id")
+                        .or_else(|| args.get("trackId"))
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    let playing = parse_bool_arg(args.get("playing"), true);
+
+                    let status = state
+                        .discord_rpc
+                        .update_music_presence(track_title, album_name, artist, track_id, playing)
+                        .await;
+                    json_response(
+                        StatusCode::OK,
+                        serde_json::json!({"status": "ok", "presence": status}),
+                    )
+                }
+                "clear" => {
+                    let status = state.discord_rpc.clear_presence().await;
+                    json_response(
+                        StatusCode::OK,
+                        serde_json::json!({"status": "ok", "presence": status}),
+                    )
+                }
+                _ => {
+                    let status = state.discord_rpc.get_status().await;
+                    json_response(
+                        StatusCode::OK,
+                        serde_json::json!({"status": "ok", "presence": status}),
+                    )
+                }
+            }
+        }
+        "toggle_discord_rpc" => {
+            let current = state.discord_rpc.get_status().await.enabled;
+            let enabled = parse_bool_arg(args.get("enabled"), !current);
+            let status = state.discord_rpc.set_enabled(enabled).await;
+            {
+                let mut cfg = state.config.write().await;
+                cfg.settings.enable_discord_rpc = enabled;
+                let _ = cfg.save();
+            }
+            json_response(
+                StatusCode::OK,
+                serde_json::json!({"status": "ok", "enabled": enabled, "connected": status.connected}),
             )
         }
         "trim_memory" => {
             crate::commands::trim_memory();
+            json_response(StatusCode::OK, serde_json::json!({"status": "ok"}))
+        }
+        "client_log" => {
+            let level = args.get("level").and_then(|v| v.as_str()).unwrap_or("info");
+            let message = args.get("message").and_then(|v| v.as_str()).unwrap_or("");
+            crate::commands::client_log(level.to_string(), message.to_string());
+            json_response(StatusCode::OK, serde_json::json!({"status": "ok"}))
+        }
+        "win_minimize" | "win_maximize" | "win_close" => {
             json_response(StatusCode::OK, serde_json::json!({"status": "ok"}))
         }
         _ => json_response(
@@ -394,10 +678,22 @@ pub async fn handle_ipc_get(
 pub async fn fallback_router(State(state): State<AppStateInner>, req: Request<Body>) -> Response {
     let path = req.uri().path();
     if path == "/" || path == "/index.html" {
-        return serve_html_shell().await;
+        return serve_index_html().await;
     }
-    if path == "/styles/main.css" {
-        return serve_main_css().await;
+    if let Some(style_rel) = path.strip_prefix("/styles/") {
+        return serve_style_file(style_rel).await;
+    }
+    if let Some(js_rel) = path.strip_prefix("/js/") {
+        return serve_js_file(js_rel).await;
+    }
+    if path.starts_with("/assets/") {
+        return handler::handle_asset_request(&state.vfs, req).await;
+    }
+    // Single-Page Application (SPA) routing fallback:
+    // Any non-asset route without a dot extension (e.g. /mspa/6, /homestuck/1, /settings, /music)
+    // serves index.html so the client-side router handles navigation seamlessly.
+    if !path.contains('.') {
+        return serve_index_html().await;
     }
     handler::handle_asset_request(&state.vfs, req).await
 }
@@ -418,6 +714,10 @@ pub async fn start_server(state: AppStateInner, port_tx: tokio::sync::oneshot::S
     let app = Router::new()
         .route("/ipc", post(handle_ipc_post))
         .route("/ipc/{cmd}", get(handle_ipc_get))
+        .route("/", get(fallback_router))
+        .route("/index.html", get(fallback_router))
+        .route("/styles/{*path}", get(fallback_router))
+        .route("/js/{*path}", get(fallback_router))
         .route("/assets/{*path}", any(fallback_router))
         .fallback(fallback_router)
         .layer(middleware::from_fn(cors_middleware))
@@ -475,6 +775,9 @@ mod tests {
     fn test_parse_page_id_arg() {
         let m1 = serde_json::json!({"page_id": "001901"});
         assert_eq!(parse_page_id_arg(&m1), Some("001901".to_string()));
+
+        let m1_camel = serde_json::json!({"pageId": "001901"});
+        assert_eq!(parse_page_id_arg(&m1_camel), Some("001901".to_string()));
 
         let m2 = serde_json::json!({"id": 1901});
         assert_eq!(parse_page_id_arg(&m2), Some("001901".to_string()));

@@ -24,6 +24,9 @@ async fn main() {
     let mod_registry =
         ModRegistry::load_from_dir(&asset_dir, &app_config.settings.mod_list_enabled);
     let vfs = Arc::new(Vfs::new(asset_dir.clone()));
+    let discord_rpc = Arc::new(tuhc_lib::rpc::DiscordRpcManager::new(
+        app_config.settings.enable_discord_rpc,
+    ));
 
     let descriptors = mod_registry.get_active_descriptors();
     let patches = mod_registry.load_active_patches();
@@ -47,6 +50,7 @@ async fn main() {
         store,
         mods: Arc::new(RwLock::new(mod_registry)),
         vfs,
+        discord_rpc,
     };
 
     println!(

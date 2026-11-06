@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -17,6 +18,7 @@ pub struct Vfs {
     base_dir: PathBuf,
     overlay_map: Arc<RwLock<HashMap<String, PathBuf>>>,
     active_mods: Arc<RwLock<Vec<ActiveModDescriptor>>>,
+    overlay_generation: Arc<AtomicU64>,
 }
 
 impl Vfs {
@@ -25,11 +27,16 @@ impl Vfs {
             base_dir,
             overlay_map: Arc::new(RwLock::new(HashMap::new())),
             active_mods: Arc::new(RwLock::new(Vec::new())),
+            overlay_generation: Arc::new(AtomicU64::new(1)),
         }
     }
 
     pub fn base_dir(&self) -> &Path {
         &self.base_dir
+    }
+
+    pub fn generation(&self) -> u64 {
+        self.overlay_generation.load(Ordering::SeqCst)
     }
 
     /// Normalizes, percent-decodes, and sanitizes incoming URI paths
@@ -90,13 +97,59 @@ impl Vfs {
             }
         }
 
-        // 2. Fallback to base Asset Pack directory
+        // 2. Built-in always-on internal mods (imods _twoToThree fixes)
+        if clean == "storyfiles/hs2/03085/03085_hq.swf" {
+            let imod = self
+                .base_dir
+                .join("archive/imods/_twoToThree/swf/03085_hq.swf");
+            if imod.is_file() {
+                return Some(imod);
+            }
+        } else if clean == "storyfiles/hs2/04082/04082_hq.swf" {
+            let imod = self
+                .base_dir
+                .join("archive/imods/_twoToThree/swf/04082_hq.swf");
+            if imod.is_file() {
+                return Some(imod);
+            }
+        } else if clean == "storyfiles/hs2/03693/03693.mp3" {
+            let imod = self
+                .base_dir
+                .join("archive/imods/_twoToThree/mp3/03693.mp3");
+            if imod.is_file() {
+                return Some(imod);
+            }
+        }
+
+        // 3. Base Asset Pack directory
         let candidate = self.base_dir.join(&clean);
         if candidate.is_file() {
-            Some(candidate)
-        } else {
-            None
+            return Some(candidate);
         }
+
+        // 4. Built-in fallback routes
+        // Fallback for Ruffle WASM/JS: js/ruffle/<file> -> archive/imods/_twoToThree/js/ruffle/<file>
+        if let Some(rel) = clean.strip_prefix("js/ruffle/") {
+            let imod = self
+                .base_dir
+                .join("archive/imods/_twoToThree/js/ruffle")
+                .join(rel);
+            if imod.is_file() {
+                return Some(imod);
+            }
+        }
+
+        // Fallback for Sburb HTML5 engine: Sburb.min.js -> archive/imods/_replaybound/Sburb.dev.js
+        if clean.ends_with("/Sburb.min.js") || clean == "Sburb.min.js" {
+            let imod = self
+                .base_dir
+                .join("archive/imods/_replaybound/Sburb.dev.js");
+            if imod.is_file() {
+                return Some(imod);
+            }
+        }
+
+        None
     }
 
     /// Rebuilds the in-memory overlay map from active mods in <2ms
@@ -107,7 +160,27 @@ impl Vfs {
         for m in mods.iter().rev() {
             // Process trees (e.g. "./Assets/" -> "assets://")
             for (mod_tree_rel, asset_tree) in &m.trees {
-                let mod_tree_dir = m.root_dir.join(mod_tree_rel.trim_start_matches("./"));
+                let mod_tree_rel_clean =
+                    mod_tree_rel.trim_start_matches("./").trim_end_matches('/');
+                let mut mod_tree_dir = m.root_dir.join(mod_tree_rel_clean);
+
+                // Case-insensitive fallback for tree folder name (e.g. Assets vs assets)
+                if !mod_tree_dir.is_dir() {
+                    if let Ok(entries) = std::fs::read_dir(&m.root_dir) {
+                        for entry in entries.flatten() {
+                            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false)
+                                && entry
+                                    .file_name()
+                                    .to_string_lossy()
+                                    .eq_ignore_ascii_case(mod_tree_rel_clean)
+                            {
+                                mod_tree_dir = entry.path();
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 if !mod_tree_dir.is_dir() {
                     continue;
                 }
@@ -155,6 +228,8 @@ impl Vfs {
             let mut active = self.active_mods.write().await;
             *active = mods;
         }
+
+        self.overlay_generation.fetch_add(1, Ordering::SeqCst);
 
         Ok(count)
     }
@@ -226,6 +301,7 @@ mod tests {
         std::fs::write(&mod_file2, b"mod 2").unwrap();
 
         let vfs = Vfs::new(base_dir);
+        assert_eq!(vfs.generation(), 1);
 
         // Before mod overlay: both resolve to base
         assert_eq!(
@@ -239,7 +315,7 @@ mod tests {
 
         // Add mod overlay
         let mut trees = HashMap::new();
-        trees.insert("./Assets/".to_string(), "assets://".to_string());
+        trees.insert("./assets/".to_string(), "assets://".to_string()); // test case-insensitive match against "Assets" on disk
         let desc = ActiveModDescriptor {
             id: "test_mod".to_string(),
             root_dir: mod_dir,
@@ -249,6 +325,7 @@ mod tests {
 
         let count = vfs.rebuild_overlay(vec![desc]).await.unwrap();
         assert_eq!(count, 1);
+        assert_eq!(vfs.generation(), 2);
 
         // After overlay: 00001.gif is base, 00002.gif is overridden by mod
         assert_eq!(
@@ -262,6 +339,7 @@ mod tests {
 
         // Clearing overlay restores base
         vfs.rebuild_overlay(vec![]).await.unwrap();
+        assert_eq!(vfs.generation(), 3);
         assert_eq!(
             vfs.resolve("/storyfiles/hs2/00002.gif").await,
             Some(base_file2)
