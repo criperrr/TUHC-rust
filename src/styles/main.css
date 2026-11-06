@@ -7,46 +7,62 @@
    1. Classic MSPA & Homestuck @font-face Declarations
    -------------------------------------------------------------------------- */
 @font-face {
+  font-family: "courierstuck";
+  src: url("/fonts/courierstuck.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Courier Prime";
-  src: url("/assets/fonts/cour.woff2") format("woff2"),
+  src: url("/fonts/courier-prime/Courier Prime.ttf") format("truetype"),
        local("Courier Prime"), local("Courier New");
-  font-weight: normal;
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
   font-family: "Courier Prime";
-  src: url("/assets/fonts/courbd.woff2") format("woff2"),
+  src: url("/fonts/courier-prime/Courier Prime Bold.ttf") format("truetype"),
        local("Courier Prime Bold"), local("Courier New Bold");
-  font-weight: bold;
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
   font-family: "Courier Prime";
-  src: url("/assets/fonts/couri.woff2") format("woff2"),
+  src: url("/fonts/courier-prime/Courier Prime Italic.ttf") format("truetype"),
        local("Courier Prime Italic"), local("Courier New Italic");
-  font-weight: normal;
+  font-weight: 400;
   font-style: italic;
   font-display: swap;
 }
 
 @font-face {
   font-family: "Courier Prime";
-  src: url("/assets/fonts/courbi.woff2") format("woff2"),
+  src: url("/fonts/courier-prime/Courier Prime Bold Italic.ttf") format("truetype"),
        local("Courier Prime Bold Italic"), local("Courier New Bold Italic");
-  font-weight: bold;
+  font-weight: 700;
   font-style: italic;
   font-display: swap;
 }
 
 @font-face {
   font-family: "Homestuck-Regular";
-  src: url("/assets/fonts/fontstuck.woff2") format("woff2"),
-       url("/assets/fonts/FONTSTUCK.TTF") format("truetype"),
+  src: url("/archive/epilogues/resources/Homestuck-Regular.woff2") format("woff2"),
+       url("/fonts/courierstuck.ttf") format("truetype"),
        local("Homestuck-Regular"), local("Courier New");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "EB-garamond";
+  src: url("/fonts/EBGaramond-VariableFont_wght.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -78,6 +94,11 @@
 [data-theme="mspa"],
 .theme-default,
 .theme-mspa {
+  --font-family-ui: "Courier Prime", "courierstuck", "Courier New", monospace;
+  --system-skycolor: #35bfff;
+  --system-background:
+    url("/assets/homebg_right.png") left top repeat-y fixed,
+    url("/assets/homebg_left.png") right top repeat-y fixed;
   --page-pageBody: #535353;
   --page-pageFrame: #C6C6C6;
   --page-pageContent: #EEEEEE;
@@ -86,6 +107,7 @@
   --header-border: #888888;
   --nav-bg: #535353;
   --font-default: #000000;
+  --font-header: #000000;
   --page-links: #0000EE;
   --page-links-visited: #551A8B;
   --page-log-bg: #EEEEEE;
@@ -388,7 +410,7 @@ a:visited {
   background-color: var(--header-bg);
   border-bottom: 1px solid var(--header-border);
   user-select: none;
-  font-family: var(--font-family-ui, "Segoe UI", Arial, sans-serif);
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   font-size: 12px;
   --address-bar-height: 28px;
   --tab-height: 28px;
@@ -461,8 +483,9 @@ a:visited {
 
 /* Row 2 Middle: JumpBox / AddressBar */
 .jumpBox {
-  flex: 1;
-  padding: 2px 6px 2px 2px;
+  flex: 1 0 auto;
+  margin: auto 0;
+  padding: 0 4px;
   display: flex;
   align-items: center;
 }
@@ -472,10 +495,12 @@ a:visited {
   flex-flow: row nowrap;
   align-items: center;
   width: 100%;
+  --border-size: 1px;
   border-radius: 2px;
-  border: 1px solid var(--header-border);
-  height: calc(var(--address-bar-height) - 4px);
+  border: var(--border-size) solid var(--header-border);
+  height: calc(var(--address-bar-height) - 2 * var(--border-size));
   background: var(--header-tabSection);
+  box-sizing: border-box;
 }
 
 .jumpboxLink {
@@ -484,30 +509,41 @@ a:visited {
   color: var(--font-header);
   font-size: 16px;
   font-weight: bold;
-  font-family: monospace;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   text-decoration: none;
-  width: 24px;
+  width: 22px;
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
   border: none;
+  outline: none;
   padding: 0;
+  user-select: none;
 }
 
 .jumpBoxInput {
   border-radius: 0 1px 1px 0;
-  padding: 2px 6px;
+  padding: 2px 4px;
   font-size: calc(var(--address-bar-height) * (3 / 5));
   line-height: 20px;
   width: 100%;
-  border: none;
-  outline: none;
-  font-family: var(--font-family-ui, "Courier New", monospace);
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   font-weight: bold;
   background: var(--header-tabSection);
   color: var(--font-header);
+  -webkit-appearance: none;
+  box-sizing: border-box;
+}
+
+.jumpBoxInput:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .browserActions {
@@ -624,7 +660,7 @@ a:visited {
   height: 18px;
   line-height: 18px;
   text-align: center;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   font-size: 12px;
   border-radius: 2px;
   cursor: pointer;
@@ -636,7 +672,7 @@ a:visited {
 }
 
 .newTabButton {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   color: var(--font-header);
   background: transparent;
   border: none;
@@ -696,7 +732,7 @@ a:visited {
   display: flex;
   flex-direction: column;
   padding: 12px;
-  font-family: Verdana, Arial, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
 }
 
 .drawerHeader {
@@ -833,7 +869,7 @@ nav.navBanner,
   align-items: center;
   justify-content: center;
   position: relative;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   font-size: 10px;
   line-height: 10px;
   font-weight: 700;
@@ -870,7 +906,7 @@ nav.navBanner,
   list-style: none;
   font-size: 10px;
   line-height: 10px;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   font-weight: 700;
 }
 
@@ -1025,8 +1061,9 @@ nav.navBanner,
 .logButton {
   margin: 2px auto;
   padding: 2px 10px;
-  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   font-size: 12px;
+  font-weight: bold;
   cursor: pointer;
   background-color: #e0e0e0;
   color: #000000;
@@ -1089,8 +1126,9 @@ nav.navBanner,
 
 .nextArrow,
 .command {
-  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   font-size: x-large;
+  font-weight: bold;
   line-height: 1.3;
   margin: 0 0 30px 0;
   color: var(--page-nav-divider, #000000);
@@ -1117,14 +1155,14 @@ nav.navBanner,
   justify-content: space-between;
   line-height: 10px;
   overflow: hidden;
-  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   font-size: 10px;
 }
 
 .footerNav ul {
   list-style: none;
   font-size: 10px;
-  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   margin: 0;
   padding: 0;
   display: flex;
@@ -1201,7 +1239,7 @@ nav.navBanner,
 .musicContainer {
   width: 100%;
   padding: 0 18px;
-  font-family: Verdana, Arial, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
 }
 
 .musicHeaderNav {
@@ -1340,7 +1378,7 @@ nav.navBanner,
   justify-content: space-between;
   padding: 0 16px;
   z-index: 200;
-  font-family: Verdana, Arial, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   font-size: 12px;
 }
 
@@ -1389,7 +1427,7 @@ nav.navBanner,
 .systemPageContainer {
   width: 100%;
   padding: 0 20px;
-  font-family: Verdana, Arial, sans-serif;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
   text-align: left;
 }
 
@@ -1583,4 +1621,282 @@ nav.navBanner,
   align-items: center;
   gap: 6px;
   font-size: 11px;
+}
+
+/* ==========================================================================
+   16. Authentic TUHC Homepage Cards, Rows & Typography
+   ========================================================================== */
+.pageBody.homepage {
+  background: var(--system-background) !important;
+  background-color: var(--system-skycolor) !important;
+  padding-bottom: 50px;
+}
+
+.homepage #page-footer {
+  display: none !important;
+}
+}
+
+.pageBody.homepage .pageFrame {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 950px !important;
+  max-width: 100vw !important;
+  box-shadow: none !important;
+}
+
+.pageBody.homepage .pageContent {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-shadow: none !important;
+}
+
+.homepage .topLogo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.homepage .topLogo img,
+.homepage .topLogo video {
+  width: 800px;
+  max-width: 100%;
+  display: block;
+}
+
+.homepage .card {
+  position: relative;
+  margin-top: 75px;
+  padding: 25px 50px;
+  border: solid 5px var(--page-pageBorder, var(--page-pageFrame));
+  box-sizing: border-box;
+  width: 950px;
+  max-width: 100vw;
+  background: var(--page-pageContent);
+  flex: 0 1 auto;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+  align-content: center;
+}
+
+.homepage .card.logoCard {
+  margin-top: 0;
+}
+
+.homepage .card.tight,
+.homepage .card.unsortedCard {
+  margin-top: 20px;
+}
+
+.homepage .card.mspaCard,
+.homepage .card.newsCard {
+  margin-top: 50px;
+}
+
+.homepage .card.tsoCard {
+  margin-top: 75px;
+}
+
+.homepage .card a:not([disabled]) {
+  color: var(--page-links);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.homepage .card a:not([disabled]):hover {
+  cursor: pointer;
+}
+
+.homepage .card a:not([disabled]):active {
+  color: var(--page-links-active);
+}
+
+.homepage .card .logo {
+  position: relative;
+  max-width: min(920px, 100vw);
+  display: block;
+}
+
+.homepage .card .logo.hsLogo {
+  margin-top: -85px;
+}
+
+.homepage .card .logo.mspaLogo {
+  margin-top: -65px;
+}
+
+.homepage .card .logo.newsLogo {
+  margin-top: -64px;
+}
+
+.homepage .card .logo.tsoLogo {
+  margin-top: -105px;
+}
+
+.homepage .card .cardContent {
+  width: 100%;
+}
+
+.homepage .card .cardContent + .cardContent {
+  padding-top: 25px;
+}
+
+.homepage .card .cardContent.collection {
+  text-align: center;
+}
+
+.homepage .card .cardContent.cardEntry {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: flex-start;
+  z-index: 1;
+}
+
+.homepage .card .cardContent.cardEntry .icon {
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.homepage .card .cardContent.cardEntry .icon .date {
+  padding-top: 5px;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
+  font-weight: 400;
+  color: var(--page-nav-meta);
+  font-size: 12px;
+}
+
+.homepage .card .cardContent.cardEntry .icon img {
+  display: block;
+  max-width: 65px;
+  max-height: 65px;
+}
+
+.homepage .card .cardContent.cardEntry .description {
+  padding-left: 20px;
+  flex-grow: 1;
+}
+
+.homepage .card .cardContent.cardEntry .description h2 {
+  font-size: 28px;
+  margin-bottom: 5px;
+}
+
+.homepage .card .cardContent.cardEntry .description h2 a {
+  text-decoration: none;
+}
+
+.homepage .card .cardContent.cardEntry .description h2 a:hover {
+  text-decoration: underline;
+}
+
+.homepage .card .cardContent.cardEntry .description p {
+  line-height: 1.25;
+}
+
+.homepage .card .cardContent.cardEntry .description .links {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
+}
+
+.homepage .card .cardContent.cardEntry .description .links .center,
+.homepage .card .cardContent.cardEntry .description .links .left,
+.homepage .card .cardContent.cardEntry .description .links .right {
+  font-size: 16px;
+  margin-right: 20px;
+}
+
+.homepage .card .cardContent.cardEntry .description .links .bigLink {
+  font-size: 24px;
+}
+
+.homepage .card .cardContent.cardEntry .description .links .resumeLink {
+  color: var(--page-links);
+  font-weight: bold;
+}
+
+.homepage .card .cardContent.mainSection {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.homepage .card .cardContent.cardRows {
+  margin-bottom: -10px;
+  margin-top: -10px;
+  display: flex;
+  flex-flow: row wrap;
+  width: 100%;
+  z-index: 0;
+}
+
+.homepage .rowItem {
+  border-top: solid 2px var(--page-pageBorder, var(--page-pageFrame));
+  padding: 10px 5px;
+  flex: 1 0 400px;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.homepage .card.noHeaderCard .cardContent.cardRows .rowItem:nth-child(1),
+.homepage .card.noHeaderCard .cardContent.cardRows .rowItem:nth-child(2) {
+  border-top: none;
+}
+
+.homepage .rowItem .thumbnail {
+  flex-shrink: 0;
+}
+
+.homepage .rowItem .thumbnail img,
+.homepage .rowItem .thumbnail .mediaembed {
+  display: block;
+  max-width: 65px;
+  max-height: 65px;
+  object-fit: contain;
+}
+
+.homepage .rowItem .description {
+  padding: 0 10px;
+  width: 100%;
+}
+
+.homepage .rowItem .description h2 {
+  font-size: 18px;
+  margin: 0 0 2px 0;
+}
+
+.homepage .rowItem .description h2 a {
+  text-decoration: none;
+}
+
+.homepage .rowItem .description h2 a:hover {
+  text-decoration: underline;
+}
+
+.homepage .rowItem .description .date {
+  font-family: var(--font-family-ui, "Courier Prime", "courierstuck", "Courier New", monospace);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--page-nav-meta);
+  margin-bottom: 4px;
+}
+
+.homepage .rowItem .description p {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.homepage .comicsans {
+  font-family: "Comic Sans MS", "Comic Sans", cursive;
+  font-size: 15px;
 }

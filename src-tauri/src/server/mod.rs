@@ -188,6 +188,52 @@ async fn serve_js_file(js_path: &str) -> Response {
     res
 }
 
+async fn serve_font_file(font_path: &str) -> Response {
+    let clean_rel = font_path.trim_start_matches('/');
+    let decoded = percent_encoding::percent_decode_str(clean_rel).decode_utf8_lossy();
+    let src_dir = get_frontend_src_dir();
+    let file = src_dir.join("fonts").join(decoded.as_ref());
+
+    if file.is_file() {
+        if let Ok(bytes) = std::fs::read(&file) {
+            let mut res = (StatusCode::OK, bytes).into_response();
+            let headers = res.headers_mut();
+            let mime = handler::get_mime_type(&file);
+            headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(mime));
+            headers.insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=86400"),
+            );
+            handler::add_cors_headers(headers);
+            return res;
+        }
+    }
+    (StatusCode::NOT_FOUND, "Font not found").into_response()
+}
+
+async fn serve_app_asset_file(asset_path: &str) -> Response {
+    let clean_rel = asset_path.trim_start_matches('/');
+    let decoded = percent_encoding::percent_decode_str(clean_rel).decode_utf8_lossy();
+    let src_dir = get_frontend_src_dir();
+    let file = src_dir.join("assets").join(decoded.as_ref());
+
+    if file.is_file() {
+        if let Ok(bytes) = std::fs::read(&file) {
+            let mut res = (StatusCode::OK, bytes).into_response();
+            let headers = res.headers_mut();
+            let mime = handler::get_mime_type(&file);
+            headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(mime));
+            headers.insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=86400"),
+            );
+            handler::add_cors_headers(headers);
+            return res;
+        }
+    }
+    (StatusCode::NOT_FOUND, "Asset not found").into_response()
+}
+
 /// Coerces a JSON value (number, positive integer, or string) to u64, or default
 fn parse_u64_arg(val: Option<&serde_json::Value>, default: u64) -> usize {
     val.and_then(|v| {
@@ -693,7 +739,17 @@ pub async fn fallback_router(State(state): State<AppStateInner>, req: Request<Bo
     if let Some(js_rel) = path.strip_prefix("/js/") {
         return serve_js_file(js_rel).await;
     }
-    if path.starts_with("/assets/") {
+    if let Some(font_rel) = path.strip_prefix("/fonts/") {
+        let res = serve_font_file(font_rel).await;
+        if res.status() == StatusCode::OK {
+            return res;
+        }
+    }
+    if let Some(asset_rel) = path.strip_prefix("/assets/") {
+        let res = serve_app_asset_file(asset_rel).await;
+        if res.status() == StatusCode::OK {
+            return res;
+        }
         return handler::handle_asset_request(&state.vfs, req).await;
     }
     // Single-Page Application (SPA) routing fallback:
@@ -725,6 +781,7 @@ pub async fn start_server(state: AppStateInner, port_tx: tokio::sync::oneshot::S
         .route("/index.html", get(fallback_router))
         .route("/styles/{*path}", get(fallback_router))
         .route("/js/{*path}", get(fallback_router))
+        .route("/fonts/{*path}", get(fallback_router))
         .route("/assets/{*path}", any(fallback_router))
         .fallback(fallback_router)
         .layer(middleware::from_fn(cors_middleware))
