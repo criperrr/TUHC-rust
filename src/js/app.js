@@ -2792,22 +2792,112 @@
 
   function renderMap(container, storyId = '6') {
     applyTheme(computeActiveTheme(null, state.config.settings));
+    document.title = 'Adventure Map — The Unofficial Homestuck Collection';
+
+    const bannerContainer = document.getElementById('page-banner-container');
+    if (bannerContainer) {
+      bannerContainer.innerHTML = '';
+      bannerContainer.style.display = 'none';
+    }
+
+    if (storyId === '4') {
+      container.innerHTML = `
+        <div class="systemPageContainer" style="text-align: center; padding: 20px 0;">
+          <h2 class="pageTitle">Problem Sleuth Map</h2>
+          <div style="margin: 15px auto;">
+            <a href="/unlock/PS_titlescreen"><img src="${resolveAssetUrl('/images/v2_biglogo.gif')}" alt="Problem Sleuth" style="max-width: 100%;" /></a>
+          </div>
+          <p><a href="/mspa/000219">&gt; Begin Problem Sleuth</a></p>
+        </div>
+      `;
+      bindInternalLinks(container);
+      return;
+    }
+
     container.innerHTML = `
-      <div class="systemPageContainer">
-        <h1 style="font-family: 'Courier New', monospace;">ADVENTURE MAP</h1>
-        <div class="settingsSectionCard">
-          <h3>Homestuck Acts &amp; Key Milestones</h3>
-          <ul style="font-size: 12px; line-height: 1.8;">
-            <li><a href="/mspa/001901">Act 1: The Fresh Jimmy (001901)</a></li>
-            <li><a href="/mspa/002148">Act 2: The Meaning of Sburb (002148)</a></li>
-            <li><a href="/mspa/002659">Act 3: The King in the Fog (002659)</a></li>
-            <li><a href="/mspa/003054">Intermission: The Midnight Crew (003054)</a></li>
-            <li><a href="/mspa/003258">Act 4: Flight of the Paradox Clone (003258)</a></li>
-            <li><a href="/mspa/003889">Act 5 Act 1: MOBIUS DOUBLE TRIPTYCH (003889)</a></li>
-            <li><a href="/mspa/004526">Act 5 Act 2: He is Already Here (004526)</a></li>
-            <li><a href="/mspa/006013">Act 6: A1 A1 (006013)</a></li>
-            <li><a href="/mspa/010027">Act 7: [S] Act 7 (010027)</a></li>
-          </ul>
+      <div class="pageContent hsMap" style="width: 100%; display: flex; flex-direction: column; align-items: center; padding: 20px 0;">
+        <h2 class="pageTitle" style="margin-bottom: 25px;">Homestuck Map</h2>
+        <div class="mapFrame" style="display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; max-width: 650px;">
+          <div class="acts" style="display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%;">
+            <div class="act act1" style="text-align: center;">
+              <a class="banner" href="/mspa/001901"><img src="${resolveAssetUrl('/maps/map_06_01.gif')}" alt="Act 1" /></a>
+            </div>
+            <div class="act act2" style="text-align: center;">
+              <a class="banner" href="/mspa/002148"><img src="${resolveAssetUrl('/maps/map_06_02.gif')}" alt="Act 2" /></a>
+            </div>
+            <div class="act act3" style="text-align: center;">
+              <a class="banner" href="/mspa/002659"><img src="${resolveAssetUrl('/maps/map_06_03.gif')}" alt="Act 3" /></a>
+            </div>
+            <div class="act int" style="text-align: center;">
+              <a class="banner" href="/mspa/003054"><img src="${resolveAssetUrl('/maps/map_06_int.gif')}" alt="Intermission" /></a>
+            </div>
+            <div class="act act4" style="text-align: center;">
+              <a class="banner" href="/mspa/003258"><img src="${resolveAssetUrl('/maps/map_06_04.gif')}" alt="Act 4" /></a>
+            </div>
+            <div class="act act51" style="text-align: center;">
+              <a class="banner" href="/mspa/003889"><img src="${resolveAssetUrl('/maps/map_06_051.gif')}" alt="Act 5 Act 1" /></a>
+            </div>
+            <div class="act act52" style="text-align: center;">
+              <a class="banner" href="/mspa/004526"><img src="${resolveAssetUrl('/maps/map_06_052.gif')}" alt="Act 5 Act 2" /></a>
+            </div>
+            <div class="act cascade" style="text-align: center;">
+              <a class="banner" href="/mspa/006009"><img src="${resolveAssetUrl('/maps/map_06_cascade.gif')}" alt="Cascade" /></a>
+            </div>
+            <div class="act int2" style="text-align: center;">
+              <a class="banner" href="/mspa/006011"><img src="${resolveAssetUrl('/maps/map_06_int2.gif')}" alt="Intermission 2" /></a>
+            </div>
+            <div class="act act61" style="text-align: center;">
+              <a class="banner" href="/mspa/006013"><img src="${resolveAssetUrl('/maps/map_06_061.gif')}" alt="Act 6 Act 1" /></a>
+            </div>
+            <div class="act act61I" style="text-align: center;">
+              <a class="banner" href="/mspa/006195"><img src="${resolveAssetUrl('/maps/map_06_I1.gif')}" alt="Act 6 Intermission 1" /></a>
+            </div>
+            <div class="act act62" style="text-align: center;">
+              <a class="banner" href="/mspa/006319"><img src="${resolveAssetUrl('/maps/map_06_062b.gif')}" alt="Act 6 Act 2" /></a>
+            </div>
+            <div class="act act62I" style="text-align: center;">
+              <a class="banner" href="/mspa/006567"><img src="${resolveAssetUrl('/maps/map_06_I2.gif')}" alt="Act 6 Intermission 2" /></a>
+            </div>
+            <div class="act act63" style="text-align: center;">
+              <a class="banner" href="/mspa/006720"><img src="${resolveAssetUrl('/maps/map_06_063b.gif')}" alt="Act 6 Act 3" /></a>
+            </div>
+            <div class="act act63I" style="text-align: center;">
+              <a class="banner" href="/mspa/007163"><img src="${resolveAssetUrl('/maps/map_06_I3.gif')}" alt="Act 6 Intermission 3" /></a>
+            </div>
+            <div class="act act64" style="text-align: center;">
+              <a class="banner" href="/mspa/007338"><img src="${resolveAssetUrl('/maps/map_06_064.gif')}" alt="Act 6 Act 4" /></a>
+            </div>
+            <div class="act act64I" style="text-align: center;">
+              <a class="banner" href="/mspa/007341"><img src="${resolveAssetUrl('/maps/map_06_I4.gif')}" alt="Act 6 Intermission 4" /></a>
+            </div>
+            <div class="act act65" style="text-align: center;">
+              <a class="banner" href="/mspa/007412"><img src="${resolveAssetUrl('/maps/map_06_065.gif')}" alt="Act 6 Act 5" /></a>
+            </div>
+            <div class="act act65I" style="text-align: center;">
+              <a class="banner" href="/mspa/007827"><img src="${resolveAssetUrl('/maps/map_06_I5.gif')}" alt="Act 6 Intermission 5" /></a>
+            </div>
+            <div class="act act661" style="text-align: center;">
+              <a class="banner" href="/mspa/008144"><img src="${resolveAssetUrl('/maps/map_06_0661.gif')}" alt="Act 6 Act 6 Act 1" /></a>
+            </div>
+            <div class="act act662" style="text-align: center;">
+              <a class="banner" href="/mspa/008301"><img src="${resolveAssetUrl('/maps/map_06_0662.gif')}" alt="Act 6 Act 6 Act 2" /></a>
+            </div>
+            <div class="act act663" style="text-align: center;">
+              <a class="banner" href="/mspa/008434"><img src="${resolveAssetUrl('/maps/map_06_0663.gif')}" alt="Act 6 Act 6 Act 3" /></a>
+            </div>
+            <div class="act act664" style="text-align: center;">
+              <a class="banner" href="/mspa/008620"><img src="${resolveAssetUrl('/maps/map_06_0664.gif')}" alt="Act 6 Act 6 Act 4" /></a>
+            </div>
+            <div class="act act665" style="text-align: center;">
+              <a class="banner" href="/mspa/008801"><img src="${resolveAssetUrl('/maps/map_06_0665.gif')}" alt="Act 6 Act 6 Act 5" /></a>
+            </div>
+            <div class="act act666" style="text-align: center;">
+              <a class="banner" href="/mspa/009349"><img src="${resolveAssetUrl('/maps/map_06_0666.gif')}" alt="Act 6 Act 6 Act 6" /></a>
+            </div>
+            <div class="act act7" style="text-align: center;">
+              <a class="banner" href="/mspa/010027"><img src="${resolveAssetUrl('/maps/map_06_07.gif')}" alt="Act 7" /></a>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -2816,17 +2906,185 @@
 
   function renderLog(container, storyId = '6') {
     applyTheme(computeActiveTheme(null, state.config.settings));
+    document.title = 'Adventure Log — The Unofficial Homestuck Collection';
+
+    const bannerContainer = document.getElementById('page-banner-container');
+    if (bannerContainer) {
+      bannerContainer.innerHTML = '';
+      bannerContainer.style.display = 'none';
+    }
+
     container.innerHTML = `
       <div class="systemPageContainer">
-        <h1 style="font-family: 'Courier New', monospace;">ADVENTURE LOG</h1>
+        <div style="text-align: center; margin: 15px 0 20px 0;">
+          <img src="${resolveAssetUrl('/images/logo.gif')}" alt="MS Paint Adventures" class="logo" style="max-width: 100%; display: block; margin: 0 auto;" />
+        </div>
+        <h1 style="font-family: 'Courier New', monospace; text-align: center;">ADVENTURE LOG</h1>
         <div class="settingsSectionCard">
-          <p style="font-size: 12px;">Jump directly into any section of the adventure:</p>
-          <ul style="font-size: 12px; line-height: 1.6;">
-            <li><a href="/mspa/001901">Homestuck (Page 001901)</a></li>
-            <li><a href="/mspa/000219">Problem Sleuth (Page 000219)</a></li>
-            <li><a href="/mspa/000136">Bard Quest (Page 000136)</a></li>
-            <li><a href="/mspa/000002">Jailbreak (Page 000002)</a></li>
+          <p style="font-size: 12px; margin-bottom: 12px;">Jump directly into any section of the adventure:</p>
+          <ul style="font-size: 13px; line-height: 1.8;">
+            <li>&gt; <a href="/mspa/001901">Homestuck (Page 001901)</a></li>
+            <li>&gt; <a href="/mspa/000219">Problem Sleuth (Page 000219)</a></li>
+            <li>&gt; <a href="/mspa/000136">Bard Quest (Page 000136)</a></li>
+            <li>&gt; <a href="/mspa/000002">Jailbreak (Page 000002)</a></li>
+            <li>&gt; <a href="/sbahj">Sweet Bro and Hella Jeff</a></li>
           </ul>
+        </div>
+      </div>
+    `;
+    bindInternalLinks(container);
+  }
+
+  function renderHelp(container) {
+    applyTheme(computeActiveTheme(null, state.config.settings));
+    document.title = 'Help — The Unofficial Homestuck Collection';
+
+    const bannerContainer = document.getElementById('page-banner-container');
+    if (bannerContainer) {
+      bannerContainer.innerHTML = '';
+      bannerContainer.style.display = 'none';
+    }
+
+    container.innerHTML = `
+      <div class="card center" style="max-width: 950px; margin: 0 auto 25px; padding: 25px 50px; border: 5px solid var(--page-pageBorder, var(--page-pageFrame)); background: var(--page-pageContent); box-sizing: border-box;">
+        <div class="cardContent">
+          <a class="logo" href="/"><img src="${resolveAssetUrl('/archive/collection/logo_v2_static.png')}" alt="TUHC Logo" style="max-width: 400px; display: block; margin: 0 auto 16px;" /></a>
+        </div>
+        <div class="cardContent" style="text-align: left;">
+          <h2 style="text-align: center; margin-bottom: 16px;">Welcome! Wondering where to begin?</h2>
+          <p style="margin-bottom: 1.2em;">
+            If you've come this far and are wondering where to start, you almost certainly want to go to <a href="/mspa/6">Homestuck</a> and take it from there! Feeling a bit more adventurous? Then try starting with Homestuck's cult classic predecessor, <a href="/mspa/4">Problem Sleuth</a>.
+          </p>
+          <p style="margin-bottom: 1.2em;">
+            To progress through the story, click on the 'commands' below each page, to which the characters will respond on the next page. These used to be picked from reader suggestions on the original site, MS Paint Adventures.
+          </p>
+          <p style="margin-bottom: 1.2em;">
+            The rest of the content in this collection can be considered supplementary material. Peruse it in your downtime, or when your story progress unlocks new content.
+          </p>
+          <div style="text-align: center; margin-top: 20px;">
+            <img src="${resolveAssetUrl('/images/newreaders_sig.gif')}" alt="Andrew Hussie Signature" style="display: inline-block;" />
+          </div>
+        </div>
+      </div>
+    `;
+    bindInternalLinks(container);
+  }
+
+  function renderNews(container) {
+    applyTheme(computeActiveTheme(null, state.config.settings));
+    document.title = 'MSPA News — The Unofficial Homestuck Collection';
+
+    const bannerContainer = document.getElementById('page-banner-container');
+    if (bannerContainer) {
+      bannerContainer.innerHTML = '';
+      bannerContainer.style.display = 'none';
+    }
+
+    container.innerHTML = `
+      <div class="systemPageContainer">
+        <div style="text-align: center; margin: 15px 0 20px 0;">
+          <img src="${resolveAssetUrl('/archive/collection/news_logo.png')}" alt="MSPA News" class="logo" style="max-width: 100%; display: block; margin: 0 auto;" />
+        </div>
+        <div class="settingsSectionCard">
+          <h3>MSPA Newsposts Archive</h3>
+          <p style="font-size: 12px; margin-bottom: 12px;">Official newsposts from Andrew Hussie throughout the lifespan of the website.</p>
+          <ul style="font-size: 13px; line-height: 1.8;">
+            <li>&gt; <a href="/mspa/001901">Read Homestuck alongside news updates</a></li>
+            <li>&gt; <a href="/blogspot">Blogspot commentary archive</a></li>
+            <li>&gt; <a href="/tumblr">Tumblr announcement archive</a></li>
+          </ul>
+        </div>
+      </div>
+    `;
+    bindInternalLinks(container);
+  }
+
+  function renderUnlock(container, sub = '') {
+    applyTheme(computeActiveTheme(null, state.config.settings));
+    document.title = 'Unlockable Content — The Unofficial Homestuck Collection';
+
+    const bannerContainer = document.getElementById('page-banner-container');
+    if (bannerContainer) {
+      bannerContainer.innerHTML = '';
+      bannerContainer.style.display = 'none';
+    }
+
+    if (sub === 'PS_titlescreen') {
+      container.innerHTML = `
+        <div class="systemPageContainer" style="text-align: center; padding: 20px 0;">
+          <h2 class="pageTitle">Problem Sleuth Title Screen</h2>
+          <div style="margin: 20px auto;">
+            <img src="${resolveAssetUrl('/images/v2_biglogo.gif')}" alt="Problem Sleuth" style="max-width: 100%;" />
+          </div>
+          <p><a href="/mspa/000219">&gt; Play Problem Sleuth</a></p>
+        </div>
+      `;
+      bindInternalLinks(container);
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="systemPageContainer">
+        <div style="text-align: center; margin: 15px 0 20px 0;">
+          <img src="${resolveAssetUrl('/images/v2_biglogo.gif')}" alt="MS Paint Adventures" class="logo" style="max-width: 100%; display: block; margin: 0 auto;" />
+        </div>
+        <h1 style="font-family: 'Courier New', monospace; text-align: center;">UNLOCKABLE CONTENT</h1>
+        <div class="settingsSectionCard" style="text-align: center;">
+          <img src="${resolveAssetUrl('/images/unlock_gamecode.gif')}" alt="Game Code" style="margin: 10px auto; display: block; max-width: 100%;" />
+          <p style="font-size: 12px; margin: 12px 0;">
+            CONGRATULATIONS!!! You have unlocked fan-requested game commands drawn for fans who made donations during MSPA's run.
+          </p>
+          <img src="${resolveAssetUrl('/images/unlock_codemachine.gif')}" alt="Code Machine" style="margin: 10px auto; display: block; max-width: 100%;" />
+        </div>
+      </div>
+    `;
+    bindInternalLinks(container);
+  }
+
+  function renderDecode(container, sub = '') {
+    applyTheme(computeActiveTheme(null, state.config.settings));
+    document.title = 'Decoding Tools — The Unofficial Homestuck Collection';
+
+    const bannerContainer = document.getElementById('page-banner-container');
+    if (bannerContainer) {
+      bannerContainer.innerHTML = '';
+      bannerContainer.style.display = 'none';
+    }
+
+    if (sub === 'morse') {
+      container.innerHTML = `
+        <div class="systemPageContainer">
+          <h2 class="pageTitle" style="text-align: center;">Morse Decoder</h2>
+          <div style="text-align: center; margin: 12px 0;">
+            <img src="${resolveAssetUrl('/archive/collection/telegraphBlinker.gif')}" alt="Telegraph Blinker" />
+          </div>
+          <div class="settingsSectionCard">
+            <p style="font-size: 12px;">Standard Morse Code translation tool.</p>
+          </div>
+        </div>
+      `;
+      bindInternalLinks(container);
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="systemPageContainer">
+        <h2 class="pageTitle" style="text-align: center;">Decoding Tools</h2>
+        <div class="settingsSectionCard" style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <a href="/decode/morse"><img src="${resolveAssetUrl('/archive/collection/decode_morse.png')}" alt="Morse Decoder" /></a>
+            <div>
+              <a href="/decode/morse"><strong>Morse Decoder</strong></a>
+              <p style="font-size: 12px; margin: 4px 0 0 0;">Decode flashing telegraph and morse messages throughout Homestuck.</p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <a href="/archive/collection/alternianGuide.png"><img src="${resolveAssetUrl('/archive/collection/decode_alternian.png')}" alt="Alternian" /></a>
+            <div>
+              <strong>Alternian Cheat Sheet</strong>
+              <p style="font-size: 12px; margin: 4px 0 0 0;">Daedric glyph deciphering guide for Troll text.</p>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -3033,8 +3291,15 @@
     pageContent.style.display = 'block';
 
     // Clear running Flash animations and audio when navigating away from story pages
-    if (route.mode !== 'PAGE' && root.TUHCMediaEngine && typeof root.TUHCMediaEngine.cleanupActiveMedia === 'function') {
-      root.TUHCMediaEngine.cleanupActiveMedia();
+    if (route.mode !== 'PAGE') {
+      if (root.TUHCMediaEngine && typeof root.TUHCMediaEngine.cleanupActiveMedia === 'function') {
+        root.TUHCMediaEngine.cleanupActiveMedia();
+      }
+      const bannerContainer = document.getElementById('page-banner-container');
+      if (bannerContainer) {
+        bannerContainer.innerHTML = '';
+        bannerContainer.style.display = 'none';
+      }
     }
 
     switch (route.mode) {
@@ -3045,6 +3310,18 @@
         applyTheme(computeActiveTheme(null, state.config.settings));
         document.title = 'Settings — The Unofficial Homestuck Collection';
         renderSettingsView(pageContent);
+        break;
+      case 'HELP':
+        renderHelp(pageContent);
+        break;
+      case 'NEWS':
+        renderNews(pageContent);
+        break;
+      case 'UNLOCK':
+        renderUnlock(pageContent, route.sub);
+        break;
+      case 'DECODE':
+        renderDecode(pageContent, route.sub);
         break;
       case 'MUSIC':
         applyTheme(computeActiveTheme(null, state.config.settings));
