@@ -418,10 +418,19 @@
   }
 
   function pushUrl(rawUrl, replace = false, targetKey = state.activeTabKey) {
-    const tab = state.config.tabData.tabs[targetKey];
+    if (typeof replace === 'string') {
+      const actualTarget = replace;
+      replace = !!targetKey;
+      targetKey = actualTarget;
+    }
+    if (!targetKey || typeof targetKey !== 'string') {
+      targetKey = state.activeTabKey;
+    }
+
+    const tab = state.config.tabData.tabs[targetKey] || getActiveTab();
     if (!tab) return;
 
-    let url = rawUrl.trim();
+    let url = (rawUrl || '/').trim();
     if (!url.startsWith('/') && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('mspa://')) {
       url = '/' + url;
     }
@@ -459,7 +468,8 @@
   }
 
   function historyBack(targetKey = state.activeTabKey) {
-    const tab = state.config.tabData.tabs[targetKey];
+    if (!targetKey || typeof targetKey !== 'string') targetKey = state.activeTabKey;
+    const tab = state.config.tabData.tabs[targetKey] || getActiveTab();
     if (!tab || !tab.history || tab.history.length === 0) return;
 
     if (!tab.future) tab.future = [];
@@ -483,7 +493,8 @@
   }
 
   function historyForward(targetKey = state.activeTabKey) {
-    const tab = state.config.tabData.tabs[targetKey];
+    if (!targetKey || typeof targetKey !== 'string') targetKey = state.activeTabKey;
+    const tab = state.config.tabData.tabs[targetKey] || getActiveTab();
     if (!tab || !tab.future || tab.future.length === 0) return;
 
     if (!tab.history) tab.history = [];
@@ -508,7 +519,7 @@
 
   function renderTabBar() {
     if (typeof document === 'undefined') return;
-    const tabListEl = document.getElementById('tab-list');
+    const tabListEl = document.getElementById('tabs') || document.getElementById('tab-list');
     if (!tabListEl) return;
 
     tabListEl.innerHTML = '';
@@ -518,30 +529,43 @@
       const tab = tabData.tabs[key];
       if (!tab) continue;
 
+      const shell = document.createElement('li');
+      shell.className = 'tabShell' + (key === state.activeTabKey ? ' activeTabShell' : '');
+
       const tabEl = document.createElement('div');
       tabEl.className = 'tab' + (key === state.activeTabKey ? ' activeTab' : '');
       tabEl.setAttribute('data-tab-key', key);
       tabEl.setAttribute('role', 'tab');
       tabEl.setAttribute('aria-selected', key === state.activeTabKey ? 'true' : 'false');
 
-      const titleSpan = document.createElement('span');
+      const titleSpan = document.createElement('div');
       titleSpan.className = 'tabTitle';
-      titleSpan.textContent = tab.title || 'Homestuck Collection';
+      const textSpan = document.createElement('span');
+      textSpan.textContent = tab.title || 'The Unofficial Homestuck Collection';
+      titleSpan.appendChild(textSpan);
       tabEl.appendChild(titleSpan);
 
-      const closeBtn = document.createElement('button');
-      closeBtn.className = 'tabCloseBtn';
-      closeBtn.title = 'Close Tab (Ctrl+W)';
-      closeBtn.setAttribute('aria-label', 'Close Tab');
-      closeBtn.innerHTML = '&times;';
-      closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        closeTab(key);
-      });
-      tabEl.appendChild(closeBtn);
+      if (tabData.tabList.length > 1) {
+        const closeBtn = document.createElement('div');
+        closeBtn.className = 'systemButton closeTabButton';
+        closeBtn.title = 'Close Tab (Ctrl+W)';
+        closeBtn.textContent = '✕';
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeTab(key);
+        });
+        tabEl.appendChild(closeBtn);
+      }
 
       tabEl.addEventListener('click', () => switchTab(key));
-      tabListEl.appendChild(tabEl);
+      shell.appendChild(tabEl);
+      tabListEl.appendChild(shell);
+    }
+
+    const titleTextEl = document.getElementById('titleBarText');
+    if (titleTextEl) {
+      const activeTab = getActiveTab();
+      titleTextEl.textContent = activeTab ? (activeTab.title || 'The Unofficial Homestuck Collection') : 'The Unofficial Homestuck Collection';
     }
   }
 
@@ -652,6 +676,50 @@
       return { base: 'beta', page: String(n - 1892) };
     }
     return null;
+  }
+
+  function getStoryNum(pageId) {
+    const n = parseInt(pageId, 10);
+    if (isNaN(n)) return 6;
+    if (n >= 1901) return 6;
+    if (n >= 1893) return 5;
+    if (n >= 219) return 4;
+    if (n >= 136) return 2;
+    if (n >= 1) return 1;
+    return 6;
+  }
+
+  function getStoryStartPage(storyNum) {
+    switch (storyNum) {
+      case 1: return '000002';
+      case 2: return '000136';
+      case 4: return '000219';
+      case 5: return '001893';
+      case 6:
+      default: return '001901';
+    }
+  }
+
+  function formatTimestamp(ts) {
+    if (!ts) return '';
+    try {
+      const date = new Date(Number(ts) * 1000);
+      const options = {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      };
+      return new Intl.DateTimeFormat('en-US', {
+        ...options,
+        timeZoneName: 'short'
+      }).format(date);
+    } catch (_) {
+      return '';
+    }
   }
 
   function formatAddressUrl(url) {
@@ -902,14 +970,31 @@
       const page = await ipcInvoke('get_story_page', { page_id: pageId });
       state.currentPageData = page;
 
-      // Update tab title and document title
+      // Update tab title, document title, and TitleBar text
       const pageTitle = page.title || 'MSPA';
+      const storyNum = getStoryNum(pageId);
+      const adventureSuffixes = [
+        ' - Jailbreak',
+        ' - Bard Quest',
+        '',
+        ' - Problem Sleuth',
+        ' - Homestuck Beta',
+        ' - Homestuck'
+      ];
+      const fullTitle = (storyNum >= 1 && storyNum <= 6 && adventureSuffixes[storyNum - 1])
+        ? `${pageTitle}${adventureSuffixes[storyNum - 1]}`
+        : `${pageTitle} - Homestuck`;
+
       const activeTab = getActiveTab();
       if (activeTab) {
-        activeTab.title = pageTitle;
+        activeTab.title = fullTitle;
         renderTabBar();
       }
-      document.title = `${pageTitle} — The Unofficial Homestuck Collection`;
+      document.title = fullTitle;
+      const titleBarTextEl = document.getElementById('titleBarText');
+      if (titleBarTextEl) {
+        titleBarTextEl.textContent = fullTitle;
+      }
 
       // Apply theme
       const theme = computeActiveTheme(page.theme, state.config.settings);
@@ -1126,42 +1211,61 @@
         bindInternalLinks(commandContainer);
       }
 
-      // Footer Navigation
+      // Footer Navigation (Authentic Legacy Structure)
       if (footerNav) {
         footerNav.innerHTML = '';
 
-        const leftNav = document.createElement('div');
-        leftNav.className = 'footerNavLeft';
+        const navOptions = document.createElement('ul');
+        navOptions.className = 'navOptions';
 
-        const startOverLink = document.createElement('a');
-        startOverLink.href = '/mspa/001901';
-        startOverLink.textContent = 'Start Over';
-        startOverLink.addEventListener('click', (e) => {
-          e.preventDefault();
-          pushUrl('/mspa/001901');
-        });
-        leftNav.appendChild(startOverLink);
+        const startOverId = getStoryStartPage(storyNum);
+        if (pageId !== startOverId) {
+          const liStart = document.createElement('li');
+          const startOverLink = document.createElement('a');
+          startOverLink.href = `/mspa/${startOverId}`;
+          startOverLink.className = 'startOver';
+          startOverLink.textContent = 'Start Over';
+          liStart.appendChild(startOverLink);
+          navOptions.appendChild(liStart);
+        }
 
         if (page.previous) {
-          const separator = document.createTextNode(' | ');
-          leftNav.appendChild(separator);
-
+          const liBack = document.createElement('li');
           const backLink = document.createElement('a');
           backLink.href = `/mspa/${page.previous}`;
-          backLink.className = 'goBackLink';
+          backLink.className = 'goBack';
           backLink.textContent = 'Go Back';
-          backLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            pushUrl(`/mspa/${page.previous}`);
-          });
-          leftNav.appendChild(backLink);
+          liBack.appendChild(backLink);
+          navOptions.appendChild(liBack);
         }
-        footerNav.appendChild(leftNav);
+        footerNav.appendChild(navOptions);
 
-        const rightNav = document.createElement('div');
-        rightNav.className = 'footerNavRight';
-        rightNav.innerHTML = `<a href="/mspa/${pageId}">${pageId}</a>`;
-        footerNav.appendChild(rightNav);
+        const metaUl = document.createElement('ul');
+        metaUl.className = 'meta';
+
+        if (page.timestamp) {
+          const liTime = document.createElement('li');
+          const timeDiv = document.createElement('div');
+          timeDiv.className = 'timestamp';
+          timeDiv.setAttribute('data-timestamp', String(page.timestamp));
+          timeDiv.textContent = formatTimestamp(page.timestamp);
+          liTime.appendChild(timeDiv);
+          metaUl.appendChild(liTime);
+        }
+
+        const liViz = document.createElement('li');
+        const viz = mspaToViz(pageId);
+        const vizHref = viz ? `https://homestuck.com/${viz.base === 'homestuck' ? 'story/' : viz.base + '/'}${viz.page}` : `/mspa/${pageId}`;
+        const vizText = viz ? `/${viz.base}/${viz.page} ↗` : `/mspa/${pageId}`;
+        const vizLink = document.createElement('a');
+        vizLink.className = 'vizLink';
+        vizLink.href = vizHref;
+        vizLink.textContent = vizText;
+        liViz.appendChild(vizLink);
+        metaUl.appendChild(liViz);
+
+        footerNav.appendChild(metaUl);
+        bindInternalLinks(footerNav);
       }
 
     } catch (err) {
@@ -2334,20 +2438,20 @@
   }
 
   function bindChromeEvents() {
+    // Window control buttons (TitleBar)
+    const minBtn = document.getElementById('minButton');
+    if (minBtn) minBtn.addEventListener('click', () => ipcInvoke('win_minimize').catch(() => {}));
+
+    const maxBtn = document.getElementById('maxButton');
+    if (maxBtn) maxBtn.addEventListener('click', () => ipcInvoke('win_maximize').catch(() => {}));
+
+    const closeBtn = document.getElementById('closeButton');
+    if (closeBtn) closeBtn.addEventListener('click', () => ipcInvoke('win_close').catch(() => {}));
+
     // New tab button
     const newTabBtn = document.getElementById('new-tab-btn');
     if (newTabBtn) {
       newTabBtn.addEventListener('click', () => newTab('/'));
-    }
-
-    // Quick PT-BR button
-    const quickPtBrBtn = document.getElementById('quick-ptbr-btn');
-    if (quickPtBrBtn) {
-      quickPtBrBtn.addEventListener('click', async () => {
-        const isPtBr = state.config.enabledMods &&
-          (state.config.enabledMods.includes('Homestuck PT-BR') || state.config.enabledMods.includes('homestuck_ptbr'));
-        await toggleMod('Homestuck PT-BR', !isPtBr);
-      });
     }
 
     // Bookmarks drawer toggle buttons
@@ -2378,8 +2482,8 @@
     if (starBtn) {
       starBtn.addEventListener('click', () => {
         newSave();
-        starBtn.innerHTML = '&#9733;';
-        setTimeout(() => { starBtn.innerHTML = '&#9734;'; }, 1000);
+        starBtn.classList.add('active');
+        setTimeout(() => { starBtn.classList.remove('active'); }, 1500);
       });
     }
 
@@ -2398,20 +2502,23 @@
       });
     }
 
-    const homeBtn = document.getElementById('nav-home-btn');
-    if (homeBtn) homeBtn.addEventListener('click', () => pushUrl('/'));
+    // Address input & Jumpbox prompt
+    const addressInput = document.getElementById('address-bar-input');
+    const jumpboxLink = document.getElementById('jumpbox-link');
+    if (jumpboxLink && addressInput) {
+      jumpboxLink.addEventListener('click', () => {
+        pushUrl(addressInput.value);
+      });
+    }
 
-    const settingsBtn = document.getElementById('settings-quick-btn');
-    if (settingsBtn) settingsBtn.addEventListener('click', () => pushUrl('/settings'));
-
-    // Address input form
-    const form = document.getElementById('address-form');
-    if (form) {
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const input = document.getElementById('address-bar-input');
-        if (input) {
-          pushUrl(input.value);
+    if (addressInput) {
+      addressInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          pushUrl(addressInput.value);
+        } else if (e.key === 'Escape') {
+          const tab = getActiveTab();
+          if (tab) addressInput.value = formatAddressUrl(tab.url);
         }
       });
     }
@@ -2442,13 +2549,13 @@
       }
     });
 
-    // Browser History PopState (Supports browser Back/Forward buttons and mobile swipe gestures)
+    // Browser History PopState (Supports browser Back/Forward buttons and gestures)
     window.addEventListener('popstate', (e) => {
-      window.logTuhc('info', '[TUHC-Nav] popstate event triggered:', e.state, 'pathname:', window.location.pathname);
+      window.logTuhc('info', `[TUHC-Nav] popstate event triggered: url=${e.state && e.state.url} pathname=${window.location.pathname}`);
       if (e.state && e.state.url) {
-        pushUrl(e.state.url, state.activeTabKey, true);
+        pushUrl(e.state.url, true, state.activeTabKey);
       } else if (window.location.pathname) {
-        pushUrl(window.location.pathname, state.activeTabKey, true);
+        pushUrl(window.location.pathname, true, state.activeTabKey);
       } else {
         historyBack();
       }
@@ -2467,7 +2574,7 @@
      13. Application Bootstrapper
      ========================================================================== */
 
-  // Global Diagnostic Logger
+  // Global Diagnostic Logger (Captures all events and streams them to Rust backend stdout)
   window.__tuhcLogs = window.__tuhcLogs || [];
   window.logTuhc = function(level, ...args) {
     const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
@@ -2482,6 +2589,8 @@
     } else {
       console.log(`[${level}]`, ...args);
     }
+    // Stream directly to Rust backend so it is captured in background tasks & terminal!
+    ipcInvoke('client_log', { level, message: msg }).catch(() => {});
   };
 
   window.addEventListener('error', (e) => {
