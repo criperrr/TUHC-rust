@@ -7,16 +7,18 @@ Executive summary and direct file index for token-efficient agent navigation in 
 ## 1. Executive Summary
 
 **Project Title:** TUHC-rust (The Unofficial Homestuck Collection - Tauri 2.0 / Rust Re-write)  
-**Active Status:** Milestone 1 Gate APPROVED — Baseline Established on `main` & `dev`.  
-**Quality Gate Status:** All 8 verification gates passing 100% (`GATE_STATUS.md`).
+**Active Status:** Wayland DMA-BUF Hardware Acceleration & Scroll/Battery Remediation Complete on `perf/battery-scroll-optimization`.  
+**Quality Gate Status:** All verification gates passing 100% (Compilation, Formatting, Clippy, 30 Rust Tests, 3 Adversarial Integration Tests, 68 Python E2E Contract Tests, Memory RSS < 150MB SLA) + Frontend Visual & Subsystem E2E passing 9/9 in 11.17s (11 visual screenshots captured).
 
 **Key Achievements:**
-- **Core Rust Implementation:** Complete Tauri 2.0 re-implementation with in-memory story and music catalog indexing, Axum loopback asset server, streaming byte-range support, and community mod VFS overlay (`src-tauri/src/`).
-- **Atomic Config Persistence:** Hardened `AppConfig::save()` with `tempfile::Builder` preventing race conditions and raw disk corruption under multi-threaded concurrency.
-- **Dual-Track E2E Test Suite:** 68/68 automated tests passing across 4 tiers (Feature Coverage, Boundaries & Security, Combinations, Real-World User Journeys).
-- **Ultra-lightweight Memory Footprint:** Server RSS measured at 57.34MB (headroom of 92.66MB under 150MB SLA ceiling).
-- **Git & Remote Setup:** Repository initialized on branch `main`, remote origin configured to `https://github.com/criperrr/TUHC-rust.git`, and development baseline established on `dev`.
-- **Governance Ecosystem:** Comprehensive governance with branch axioms, conventional commit enforcement, strict quality gatekeepers, and 11 specialized desktop agents.
+- **WebKitGTK DMA-BUF Zero-Copy Presentation & Hardware Acceleration:** Removed legacy `WEBKIT_DISABLE_DMABUF_RENDERER=1` in `src-tauri/src/main.rs`. On Linux Wayland (AMDGPU/Mesa), this was forcing WebKitGTK 2.54 onto a CPU software shared-memory (shm) blitting path, saturating the GLib main loop (5,300+ `clock_gettime` calls/sec) and pegging CPU at ~40% (25% UIProcess + 18% WebProcess) with 35W APU power draw. Restored `HardwareAccelerationPolicy::Always` and `set_enable_smooth_scrolling(true)` in `src-tauri/src/lib.rs` for butter-smooth 60–144Hz scroll with near-zero CPU.
+- **Desktop Window Container Architecture (Zero Root Scroll Invalidation):** Replaced document root scrolling (`html, body { overflow: hidden; height: 100%; }`, `#app { overflow: hidden; height: 100%; }`) with desktop-native flex container. Transformed `.appHeader` to `position: relative` (eradicating GPU layer transform recalculation per wheel delta), and assigned internal scrolling strictly to `.tabFrame { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; contain: paint layout; }`. Added `min-height: 0; contain: paint layout;` to eliminate recursive flex recalculations on child elements.
+- **Developer Experience & Cargo Run Convenience:** Added root `package.json` with scripts (`dev`, `build`, `test`), configured `default-run = "tuhc"` in `src-tauri/Cargo.toml` and `default-members = ["src-tauri"]` in root `Cargo.toml`. The user can now simply run `cargo run`, `npm run dev`, or `pnpm dev`.
+- **Diagnostic HUD Loop Throttling & Filter Eradication:** Replaced heavy `backdrop-filter: blur(4px)` with high-contrast opaque background (`rgba(0, 15, 5, 0.95)`), and stopped the `requestAnimationFrame` 144Hz polling loop entirely whenever HUD is minimized or hidden.
+- **Route Scroll Reset Hook:** Automatically resets `viewport.scrollTop = 0` on every route change in `app.js`.
+- **Adversarial Audit & Attack Hardening of Frontend E2E Runner:** Implemented signal-safe child process cleanup on `SIGINT`/`SIGTERM` (eliminating orphaned server zombies), port validation, pre-flight target server probing, hermetic temporary `XDG_CONFIG_HOME` isolation, and stale report eviction.
+- **PT-BR Translation Mod Alignment & Resilient Config Persistence:** Harmonized `save_config` IPC deserializer; synchronized `modListEnabled` and `enabledMods`; confirmed 2,401 pages translated in memory with Portuguese titles (`Insira o nome.`, `Tente novamente.`).
+- **Deterministic Theme Engine Across All Views:** Unified theme attribution across `html`, `body`, `#app`, and `#page-container`; eliminated hardcoded `applyTheme('mspa')` on system views.
 
 ---
 
@@ -35,15 +37,24 @@ Executive summary and direct file index for token-efficient agent navigation in 
 - `config/mod.rs`: `AppConfig` persistence with atomic tempfile replacement, `config.json` serialization, tab management.
 - `mods/mod.rs`: `ModRegistry` managing installed and enabled community mods.
 - `mods/parser.rs`: Regex-based declarative parser for `mod.js` and patch loader for `translation2.json`.
+- `rpc/mod.rs`: Native asynchronous Discord Local IPC manager, MSPA chapter resolution, Reading/Music presence, and Unix domain socket client.
 - `bin/server.rs`: Standalone contract server binary for CI and test harnesses.
 
 ### 2.2. Frontend Shell (`src/`)
 - `index.html`: Shell loading Webview UI, Ruffle Flash player WASM, and loopback communication.
+- `styles/main.css`: 13 authentic MSPA themes, Courier typography, pesterlog quirks, and 950px frame.
+- `js/app.js`: Tabbed browser navigation, URL router, bookmark persistence, settings, and sound test.
+- `js/flashProps.js`: Millisecond audio delay tables, negative seek offsets, crop heights, and transitions.
+- `js/mediaEngine.js`: Ruffle WASM iframe loader, Frag IPC bridge, HTML5 audio/video, and Sburb canvas.
+- `js/modHooks.js`: VueHooks evaluator, rate-limited console sandbox, English & PT-BR button text.
 
 ### 2.3. Test Infrastructure (`tests/` & `src-tauri/tests/`)
 - `tests/e2e_runner.py`: Unified test execution engine.
 - `tests/mock_server.py`: Reference contract server oracle.
 - `tests/common.py`: Shared test client, assertion helpers, and asset validation.
+- `tests/frontend_e2e/run.py`: Master launcher for Frontend Visual & Subsystem E2E test suite (spawns Axum loopback server, executes Playwright runner).
+- `tests/frontend_e2e/e2e_runner.js`: Playwright test runner verifying 9 core subsystems and capturing 11 screenshots.
+- `tests/frontend_e2e/README.md`: Technical architectural comparison (@tauri-apps/wdio-tauri-service vs Playwright vs WebKitWebDriver).
 - `tests/tier1_features/`: Happy-path feature contract tests.
 - `tests/tier2_boundaries/`: Error handling, 404s, malformed ranges, path traversal security.
 - `tests/tier3_combinations/`: Cross-subsystem interaction tests (mods + story + persistence).

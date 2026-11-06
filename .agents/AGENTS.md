@@ -20,6 +20,7 @@ Deep architectural tasks must route to designated specialized agent personas:
 - **Webview & Ruffle Frontend:** `frontend-specialist` (WebKitGTK, Vue, HTML5, WebAssembly Ruffle emulator).
 - **Memory Hygiene & Optimization:** `performance-optimizer` (Memory RSS < 150MB SLA, `malloc_trim`, zero-copy).
 - **E2E & Contract Testing:** `qa-automation-engineer` & `test-engineer` (Dual-track tests, Tier 1-4 suites).
+- **Frontend Visual & E2E Testing:** `frontend-e2e-specialist` (Playwright visual iterations, screenshots, console logs).
 - **Security & Path Traversal Auditing:** `security-auditor` (VFS sanitization, bounds checks, `cargo audit`).
 - **CI/CD & Release Pipeline:** `devops-engineer` (GitHub Actions, Tauri bundler, Debian/AppImage packaging).
 

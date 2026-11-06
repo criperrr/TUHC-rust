@@ -146,4 +146,37 @@ async fn test_non_numeric_and_boundary_keys() {
     // Zero count range
     let range_zero_count = store.get_story_range(1901, 0).await;
     assert!(range_zero_count.is_empty());
+
+    // 4. Extreme boundary and usize::MAX resilience
+    let range_max_start = store.get_story_range(usize::MAX, 10).await;
+    assert!(
+        range_max_start.is_empty(),
+        "usize::MAX start must return empty without panic"
+    );
+
+    let range_max_count = store.get_story_range(0, usize::MAX).await;
+    assert_eq!(
+        range_max_count.len(),
+        9991,
+        "usize::MAX count must saturate to total without panic"
+    );
+
+    let range_both_max = store.get_story_range(usize::MAX, usize::MAX).await;
+    assert!(
+        range_both_max.is_empty(),
+        "usize::MAX start and count must return empty without panic"
+    );
+
+    let range_overflow_sum = store.get_story_range(10030, usize::MAX).await;
+    assert_eq!(
+        range_overflow_sum.len(),
+        7,
+        "10030 with usize::MAX count must yield remaining 7 pages without overflow"
+    );
+
+    let range_near_max = store.get_story_range(usize::MAX - 100, usize::MAX).await;
+    assert!(
+        range_near_max.is_empty(),
+        "near-max start must return empty safely"
+    );
 }

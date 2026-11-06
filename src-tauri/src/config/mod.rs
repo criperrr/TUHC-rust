@@ -235,6 +235,8 @@ pub struct AppSettings {
     pub cursed_history: bool,
     #[serde(default, alias = "ruffle_fallback")]
     pub ruffle_fallback: bool,
+    #[serde(default = "default_true", alias = "enable_discord_rpc")]
+    pub enable_discord_rpc: bool,
     #[serde(default, alias = "mod_list_enabled")]
     pub mod_list_enabled: Vec<String>,
     #[serde(flatten)]
@@ -293,6 +295,7 @@ impl Default for AppSettings {
             pxs_tavros: false,
             cursed_history: false,
             ruffle_fallback: false,
+            enable_discord_rpc: true,
             mod_list_enabled: Vec::new(),
             extra: serde_json::Map::new(),
         }
@@ -318,10 +321,34 @@ pub struct AppConfig {
     pub settings: AppSettings,
     #[serde(default = "default_app_version", alias = "app_version")]
     pub app_version: String,
+    #[serde(default, alias = "enabled_mods")]
+    pub enabled_mods: Option<Vec<String>>,
 }
 
 fn default_app_version() -> String {
     "2.8.1".to_string()
+}
+
+pub fn default_asset_dir() -> String {
+    if let Ok(env_dir) = std::env::var("TUHC_ASSET_DIR") {
+        let p = PathBuf::from(&env_dir);
+        if p.exists() {
+            return env_dir;
+        }
+    }
+    let primary = PathBuf::from("/home/criper/Downloads/Asset Pack V2");
+    if primary.exists() {
+        return primary.to_string_lossy().into_owned();
+    }
+    let manifest_fallback = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."))
+        .join("tests")
+        .join("fixtures");
+    if manifest_fallback.exists() {
+        return manifest_fallback.to_string_lossy().into_owned();
+    }
+    primary.to_string_lossy().into_owned()
 }
 
 impl Default for AppConfig {
@@ -335,11 +362,12 @@ impl Default for AppConfig {
                     .unwrap_or_default()
                     .as_millis() as u64,
             ),
-            asset_dir: Some("/home/criper/Downloads/Asset Pack V2".to_string()),
+            asset_dir: Some(default_asset_dir()),
             tab_data: TabData::default(),
             save_data: SaveData::default(),
             settings: AppSettings::default(),
             app_version: default_app_version(),
+            enabled_mods: Some(Vec::new()),
         }
     }
 }
@@ -361,8 +389,20 @@ impl AppConfig {
         }
 
         match fs::read_to_string(&path) {
-            Ok(content) => match serde_json::from_str(&content) {
-                Ok(cfg) => cfg,
+            Ok(content) => match serde_json::from_str::<AppConfig>(&content) {
+                Ok(mut cfg) => {
+                    if cfg.settings.mod_list_enabled.is_empty() {
+                        if let Some(ref em) = cfg.enabled_mods {
+                            if !em.is_empty() {
+                                cfg.settings.mod_list_enabled = em.clone();
+                            }
+                        }
+                    }
+                    if cfg.enabled_mods.is_none() {
+                        cfg.enabled_mods = Some(cfg.settings.mod_list_enabled.clone());
+                    }
+                    cfg
+                }
                 Err(e) => {
                     log::error!("Failed to parse config.json, using defaults: {}", e);
                     Self::default()
@@ -393,6 +433,7 @@ impl AppConfig {
 
         temp_file.write_all(json_str.as_bytes())?;
         temp_file.flush()?;
+        temp_file.as_file().sync_all()?;
         temp_file.persist(&path).map_err(|e| e.error)?;
         Ok(())
     }
@@ -416,6 +457,22 @@ mod tests {
         assert_eq!(loaded.tab_data.active_tab_key, "001");
         assert_eq!(loaded.settings.mod_list_enabled, vec!["Homestuck PT-BR"]);
         assert!(loaded.settings.notifications);
+        assert!(loaded.settings.enable_discord_rpc);
         assert_eq!(loaded.app_version, "2.8.1");
+    }
+
+    #[test]
+    fn test_enable_discord_rpc_aliases() {
+        let json_camel = r#"{"enableDiscordRpc": false}"#;
+        let s1: AppSettings = serde_json::from_str(json_camel).unwrap();
+        assert!(!s1.enable_discord_rpc);
+
+        let json_snake = r#"{"enable_discord_rpc": false}"#;
+        let s2: AppSettings = serde_json::from_str(json_snake).unwrap();
+        assert!(!s2.enable_discord_rpc);
+
+        let json_default = r#"{}"#;
+        let s3: AppSettings = serde_json::from_str(json_default).unwrap();
+        assert!(s3.enable_discord_rpc);
     }
 }

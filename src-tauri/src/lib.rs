@@ -2,6 +2,7 @@ pub mod commands;
 pub mod config;
 pub mod data;
 pub mod mods;
+pub mod rpc;
 pub mod server;
 
 use std::path::PathBuf;
@@ -12,6 +13,7 @@ use tokio::sync::RwLock;
 use config::AppConfig;
 use data::ArchiveStore;
 use mods::ModRegistry;
+use rpc::DiscordRpcManager;
 use server::{AppStateInner, Vfs};
 
 pub struct AppState(pub Arc<AppStateInner>);
@@ -25,7 +27,8 @@ pub fn run() {
                 .asset_dir
                 .as_ref()
                 .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from("/home/criper/Downloads/Asset Pack V2"));
+                .filter(|p| p.exists())
+                .unwrap_or_else(|| PathBuf::from(config::default_asset_dir()));
 
             // Ephemeral loopback port channel
             let (port_tx, port_rx) = tokio::sync::oneshot::channel::<u16>();
@@ -34,6 +37,9 @@ pub fn run() {
             let mod_registry =
                 ModRegistry::load_from_dir(&asset_dir, &app_config.settings.mod_list_enabled);
             let vfs = Arc::new(Vfs::new(asset_dir.clone()));
+            let discord_rpc = Arc::new(DiscordRpcManager::new(
+                app_config.settings.enable_discord_rpc,
+            ));
 
             let descriptors = mod_registry.get_active_descriptors();
             let patches = mod_registry.load_active_patches();
@@ -55,6 +61,7 @@ pub fn run() {
             let vfs_clone = Arc::clone(&vfs);
             let mod_registry_arc = Arc::new(RwLock::new(mod_registry));
             let mod_registry_clone = Arc::clone(&mod_registry_arc);
+            let discord_rpc_clone = Arc::clone(&discord_rpc);
 
             tauri::async_runtime::spawn(async move {
                 let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -73,6 +80,7 @@ pub fn run() {
                     store: store_clone,
                     mods: mod_registry_clone,
                     vfs: vfs_clone,
+                    discord_rpc: discord_rpc_clone,
                 };
 
                 let _ = port_tx.send(port);
@@ -80,6 +88,13 @@ pub fn run() {
                 let app = axum::Router::new()
                     .route("/ipc", axum::routing::post(server::handle_ipc_post))
                     .route("/ipc/{cmd}", axum::routing::get(server::handle_ipc_get))
+                    .route("/", axum::routing::get(server::fallback_router))
+                    .route("/index.html", axum::routing::get(server::fallback_router))
+                    .route(
+                        "/styles/{*path}",
+                        axum::routing::get(server::fallback_router),
+                    )
+                    .route("/js/{*path}", axum::routing::get(server::fallback_router))
                     .route(
                         "/assets/{*path}",
                         axum::routing::any(server::fallback_router),
@@ -104,6 +119,7 @@ pub fn run() {
                 store,
                 mods: mod_registry_arc,
                 vfs,
+                discord_rpc,
             });
 
             app.manage(AppState(inner));
@@ -121,7 +137,10 @@ pub fn run() {
                         if let Some(settings) = inner.settings() {
                             settings.set_enable_page_cache(false);
                             settings.set_enable_offline_web_application_cache(false);
-                            settings.set_enable_smooth_scrolling(false);
+                            settings.set_enable_smooth_scrolling(true);
+                            settings.set_hardware_acceleration_policy(
+                                webkit2gtk::HardwareAccelerationPolicy::Always,
+                            );
                         }
                     });
                 }
@@ -144,7 +163,17 @@ pub fn run() {
             commands::save_config,
             commands::get_available_mods,
             commands::toggle_mod,
-            commands::trim_memory
+            commands::get_mod_hooks,
+            commands::evaluate_log_button_text,
+            commands::get_discord_status,
+            commands::set_discord_presence,
+            commands::toggle_discord_rpc,
+            commands::trim_memory,
+            commands::client_log,
+            commands::win_minimize,
+            commands::win_maximize,
+            commands::win_close,
+            commands::get_debug_metrics
         ])
         .run(tauri::generate_context!())
         .expect("error while running tuhc application");

@@ -88,6 +88,17 @@ Media files (audio tracks `.mp3`, flash archives `.swf`, videos) require byte-ra
 - Linux WebKitGTK settings use `webkit2gtk::CacheModel::DocumentViewer` to prevent aggressive disk and memory caching of visited story pages.
 - Memory trim calls via `libc::malloc_trim(0)` return freed heap chunks to the OS kernel.
 
+### 3.5. Global Discord Rich Presence (RPC)
+A native, zero-dependency Discord Local IPC client is integrated into the backend runtime (`rpc::DiscordRpcManager`):
+- **Cross-Platform Socket Discovery:** On Unix (`Linux`/`macOS`), candidate Unix domain sockets are queried in parallel across `$XDG_RUNTIME_DIR/discord-ipc-0..9`, Flatpak (`app/com.discordapp.Discord`), Snap (`snap.discord`), `/run/user/$UID/`, and `$TMPDIR`/`/tmp/discord-ipc-0..9` with a strict 150ms timeout (`\\.\pipe\discord-ipc-0` on Windows).
+- **Binary Wire Protocol Framing:** Messages adhere to Discord's binary framing format `[opcode: u32 LE, length: u32 LE, json_bytes]`, supporting `Handshake` (`op=0`) and `SET_ACTIVITY` (`op=1`).
+- **MSPA Chapter / Act Resolution:** A canonical chapter and icon key resolver (`resolve_story_chapter`) covers all MSPA pages (Jailbreak, Bard Quest, Problem Sleuth Chapters 1–22, Homestuck Beta, Acts 1–7, Openbound, Collide, and Ryanquest).
+- **Dual Presence Modes:**
+  - *Reading Presence:* Tracks active chapter, formatted page title (`"Homestuck (Page 001901)"` or localized `"Insira o nome. (Page 001902)"`), story icon, and elapsed reading session timestamp. Triggered automatically on story page retrieval when `enable_discord_rpc` is active.
+  - *Music Presence:* Displays current track title, album, artist, and playback status (`play`/`pause` small icon).
+- **Graceful Offline Fallback & Fault Tolerance:** If Discord is closed or unreachable, the RPC manager records the latest activity state in memory without blocking, timing out, or failing IPC/HTTP endpoints. Offline status is transparently reported via `get_discord_status`.
+- **Privacy & Settings Control:** Configurable via `config.json` (`enable_discord_rpc: bool`), allowing users to toggle Rich Presence on/off in real-time.
+
 ---
 
 ## 4. Dual-Track Testing Architecture
