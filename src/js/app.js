@@ -2346,6 +2346,9 @@
      ========================================================================== */
 
   async function renderRoute(route) {
+    const viewport = document.getElementById('tab-viewport');
+    if (viewport) viewport.scrollTop = 0;
+
     state.currentRoute = route;
     if (typeof document === 'undefined') return;
     const pageContent = document.getElementById('page-content');

@@ -337,23 +337,16 @@
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden; /* O documento da janela NUNCA rola! */
   background-color: var(--page-pageBody);
   color: var(--font-default);
   font-family: "Courier New", "Courier Prime", Courier, monospace;
   -webkit-font-smoothing: antialiased;
-}
-
-body.force-scrollbar {
-  overflow-y: scroll;
 }
 
 body.pixel-scaling img {
@@ -378,7 +371,9 @@ a:visited {
 #app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   background-color: var(--page-pageBody);
   color: var(--font-default);
 }
@@ -387,11 +382,9 @@ a:visited {
    4. Top Browser Chrome: TabBar (Row 1) & AddressBar (Row 2) (F08)
    -------------------------------------------------------------------------- */
 .appHeader {
-  position: sticky;
-  top: 0;
+  flex: 0 0 auto;
+  position: relative; /* NÃO é sticky! Fica no topo naturalmente */
   z-index: 100;
-  will-change: transform;
-  transform: translateZ(0);
   background-color: var(--header-bg);
   border-bottom: 1px solid var(--header-border);
   user-select: none;
@@ -795,14 +788,24 @@ a:visited {
    6. Classic MSPA Page Structure (`.pageBody`, `.navBanner`, `.pageFrame`, `.pageContent`)
    -------------------------------------------------------------------------- */
 .tabFrame {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background-color: var(--page-pageBody);
+  overflow-y: auto; /* Apenas o container de conteúdo rola! */
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  contain: paint layout;
+}
+
+body.force-scrollbar .tabFrame {
+  overflow-y: scroll;
 }
 
 .pageBody {
-  flex: 1;
+  flex: 1 0 auto;
   width: 100%;
   background-color: var(--page-pageBody);
   color: var(--font-default);
@@ -1477,7 +1480,7 @@ nav.navBanner,
   font-family: "Courier Prime", "Courier New", Courier, monospace;
   font-size: 11px;
   line-height: 1.4;
-  background: rgba(0, 15, 5, 0.85);
+  background: rgba(0, 15, 5, 0.95);
   color: #00ff66;
   border: 1px solid rgba(0, 255, 102, 0.45);
   border-radius: 4px;
@@ -1489,7 +1492,6 @@ nav.navBanner,
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65), 0 0 8px rgba(0, 255, 102, 0.2);
   user-select: none;
   min-width: 250px;
-  backdrop-filter: blur(4px);
   transition: opacity 0.15s ease;
 }
 

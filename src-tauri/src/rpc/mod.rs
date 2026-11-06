@@ -165,12 +165,20 @@ pub fn decode_ipc_frame(bytes: &[u8]) -> Option<(u32, serde_json::Value)> {
 
 /// Discovers candidate Discord IPC Unix domain socket paths across standard, Flatpak, Snap, and temp dirs
 pub fn candidate_socket_paths() -> Vec<PathBuf> {
-    let mut paths = Vec::new();
-
     if let Ok(custom_sock) = std::env::var("TUHC_DISCORD_IPC_SOCKET") {
-        let p = PathBuf::from(custom_sock);
-        paths.push(p);
+        return vec![PathBuf::from(custom_sock)];
     }
+
+    if let Ok(custom_dir) = std::env::var("TUHC_DISCORD_SOCKET_DIR") {
+        let mut paths = Vec::new();
+        let dir = PathBuf::from(custom_dir);
+        for i in 0..10 {
+            paths.push(dir.join(format!("discord-ipc-{}", i)));
+        }
+        return paths;
+    }
+
+    let mut paths = Vec::new();
 
     let mut base_dirs = Vec::new();
     if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
@@ -661,6 +669,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_discord_rpc_offline_non_blocking_performance() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::env::set_var("TUHC_DISCORD_SOCKET_DIR", temp_dir.path());
+
         let rpc = DiscordRpcManager::new(true);
 
         // 1. Measure duration of 50 consecutive reading presence updates when offline
@@ -717,6 +728,8 @@ mod tests {
         for h in handles {
             h.await.unwrap();
         }
+
+        std::env::remove_var("TUHC_DISCORD_SOCKET_DIR");
     }
 
     #[cfg(unix)]
