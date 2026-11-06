@@ -165,7 +165,11 @@ pub fn run() {
             commands::get_discord_status,
             commands::set_discord_presence,
             commands::toggle_discord_rpc,
-            commands::trim_memory
+            commands::trim_memory,
+            commands::client_log,
+            commands::win_minimize,
+            commands::win_maximize,
+            commands::win_close
         ])
         .run(tauri::generate_context!())
         .expect("error while running tuhc application");

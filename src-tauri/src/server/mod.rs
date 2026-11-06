@@ -599,6 +599,15 @@ pub async fn dispatch_ipc(
             crate::commands::trim_memory();
             json_response(StatusCode::OK, serde_json::json!({"status": "ok"}))
         }
+        "client_log" => {
+            let level = args.get("level").and_then(|v| v.as_str()).unwrap_or("info");
+            let message = args.get("message").and_then(|v| v.as_str()).unwrap_or("");
+            crate::commands::client_log(level.to_string(), message.to_string());
+            json_response(StatusCode::OK, serde_json::json!({"status": "ok"}))
+        }
+        "win_minimize" | "win_maximize" | "win_close" => {
+            json_response(StatusCode::OK, serde_json::json!({"status": "ok"}))
+        }
         _ => json_response(
             StatusCode::BAD_REQUEST,
             serde_json::json!({"error": format!("Unknown IPC command '{}'", command)}),

@@ -252,3 +252,27 @@ pub fn trim_memory() {
         libc::malloc_trim(0);
     }
 }
+
+#[tauri::command]
+pub fn client_log(level: String, message: String) {
+    eprintln!("[WEBVIEW-{}] {}", level.to_uppercase(), message);
+}
+
+#[tauri::command]
+pub fn win_minimize(window: tauri::Window) {
+    let _ = window.minimize();
+}
+
+#[tauri::command]
+pub fn win_maximize(window: tauri::Window) {
+    if window.is_maximized().unwrap_or(false) {
+        let _ = window.unmaximize();
+    } else {
+        let _ = window.maximize();
+    }
+}
+
+#[tauri::command]
+pub fn win_close(window: tauri::Window) {
+    let _ = window.close();
+}

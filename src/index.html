@@ -7,45 +7,74 @@
   <link rel="stylesheet" href="/styles/main.css">
 </head>
 <body>
-  <div id="app" data-theme="mspa">
-    <!-- Top Browser Chrome: Tab Bar & Address Bar -->
-    <header id="app-header" class="appHeader">
-      <div id="tab-bar" class="tabSection">
-        <div id="tab-list" class="tabList" role="tablist" aria-label="Browser Tabs">
-          <div class="tab activeTab" data-tab-key="000" role="tab" aria-selected="true">
-            <span class="tabTitle">The Unofficial Homestuck Collection</span>
-            <button class="tabCloseBtn" title="Close Tab (Ctrl+W)" aria-label="Close Tab">&times;</button>
-          </div>
+  <div id="app" class="mspa" data-theme="mspa">
+    <!-- Top Browser Chrome: TitleBar, AddressBar, TabBar (Authentic Legacy TUHC Layout) -->
+    <header id="appHeader" class="appHeader">
+      <!-- Row 1: TitleBar (22px) -->
+      <div id="titleBar" class="titleBar">
+        <div id="titleBarText" class="titleBarText">The Unofficial Homestuck Collection</div>
+        <div id="titleBarButtons" class="titleBarButtons">
+          <div class="systemButton" id="minButton" title="Minimize">‒</div>
+          <div class="systemButton" id="maxButton" title="Maximize">☐</div>
+          <div class="systemButton" id="closeButton" title="Close">✕</div>
         </div>
-        <button id="new-tab-btn" class="newTabBtn" title="New Tab (Ctrl+T)" aria-label="New Tab">+</button>
-        <div class="tabBarSpacer"></div>
-        <button id="quick-ptbr-btn" class="chromeActionBtn" title="Toggle Homestuck PT-BR Mod">PT-BR</button>
-        <button id="bookmarks-toggle-btn" class="chromeActionBtn" title="Bookmarks / Save-Load">SAVES</button>
       </div>
 
-      <div id="address-bar" class="addressBar">
-        <div class="navControls">
-          <button id="nav-back-btn" class="navBtn" title="Back (Alt+Left)" aria-label="Back" disabled>&larr;</button>
-          <button id="nav-forward-btn" class="navBtn" title="Forward (Alt+Right)" aria-label="Forward" disabled>&rarr;</button>
-          <button id="nav-reload-btn" class="navBtn" title="Reload Page" aria-label="Reload">&#x21bb;</button>
-          <button id="nav-home-btn" class="navBtn" title="Home (/)" aria-label="Home">&#x2302;</button>
+      <!-- Row 2 & 3: TabBar with Navigation & AddressBar (28px + 28px) -->
+      <div id="tabBar" class="tabBar">
+        <!-- Row 2 Left: Navigation Buttons -->
+        <div class="navigationButtons">
+          <button id="nav-back-btn" class="systemButton historyButton historyBack" title="Back (Alt+Left)" aria-label="Back" disabled>
+            <svg viewBox="0 0 320 512" width="12" height="12"><path fill="currentColor" d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l192 192c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256 246.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192z"/></svg>
+          </button>
+          <button id="nav-forward-btn" class="systemButton historyButton historyForward" title="Forward (Alt+Right)" aria-label="Forward" disabled>
+            <svg viewBox="0 0 320 512" width="12" height="12"><path fill="currentColor" d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></svg>
+          </button>
+          <button id="nav-reload-btn" class="systemButton historyButton refresh" title="Reload Tab" aria-label="Reload">
+            <svg viewBox="0 0 512 512" width="12" height="12"><path fill="currentColor" d="M463.5 224H472c13.3 0 24-10.7 24-24V72c0-9.7-5.8-18.5-14.8-22.2s-19.3-1.7-26.2 5.2L413.4 96.6c-87.6-86.5-228.7-86.2-315.8 1c-87.5 87.5-87.5 229.3 0 316.8s229.3 87.5 316.8 0c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0c-62.5 62.5-163.8 62.5-226.3 0s-62.5-163.8 0-226.3c62.2-62.2 162.7-62.5 225.3-1L327 183c-6.9 6.9-8.9 17.2-5.2 26.2s12.5 14.8 22.2 14.8H463.5z"/></svg>
+          </button>
         </div>
-        <form id="address-form" class="addressForm">
-          <input
-            id="address-bar-input"
-            class="addressInput"
-            type="text"
-            value="/"
-            placeholder="Enter MSPA URL (e.g. /homestuck/1, /mspa/001901, /music, /settings)"
-            aria-label="Address Bar"
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <button type="submit" id="address-go-btn" class="addressGoBtn" title="Navigate">GO</button>
-        </form>
-        <div class="addressActions">
-          <button id="bookmark-star-btn" class="navBtn starBtn" title="Bookmark Current Page">&#9734;</button>
-          <button id="settings-quick-btn" class="navBtn" title="Settings (/settings)">&#9881;</button>
+
+        <!-- Row 2 Right: Address Bar / JumpBox -->
+        <div id="jumpBox" class="jumpBox">
+          <div class="jumpBoxWrapper">
+            <a id="jumpbox-link" class="jumpboxLink" title="Navigate">&gt;</a>
+            <input
+              id="address-bar-input"
+              class="jumpBoxInput"
+              type="text"
+              value="/"
+              placeholder="Enter MSPA URL (e.g. /homestuck/1, /mspa/001901)"
+              aria-label="Address Bar"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <div id="browserActions" class="browserActions">
+              <div id="bookmark-star-btn" class="systemButton bookmarkStarBtn" title="Bookmark Current Page">
+                <svg viewBox="0 0 576 512" width="14" height="14"><path fill="currentColor" d="M316.9 18C311.6 7 300.4 0 288 0s-23.6 7-28.8 18L195.8 150.3 47.9 171.8c-12.1 1.8-22.1 10.5-25.5 22.2s.5 24.3 9.3 33l107 104.3-25.2 147.2c-2.1 12.1 3.1 24.1 13.1 30.9s23 7 33.5 1.4l130.8-68.8 130.8 68.8c10.5 5.5 23.5 5.4 33.5-1.4s15.2-18.8 13.1-30.9L460.9 331.3l107-104.3c8.8-8.6 12.7-21.2 9.3-33s-13.4-20.4-25.5-22.2L400.2 150.3 336.9 18z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lineBreak"></div>
+
+        <!-- Row 3: TabSection with Tabs & Bookmarks Button -->
+        <div id="tabSection" class="tabSection">
+          <ul id="tabs" class="tabList" role="tablist">
+            <li class="tabShell activeTabShell">
+              <div class="tab activeTab" data-tab-key="000" role="tab" aria-selected="true">
+                <div class="tabTitle"><span>The Unofficial Homestuck Collection</span></div>
+                <div class="systemButton closeTabButton" title="Close Tab (Ctrl+W)">✕</div>
+              </div>
+            </li>
+          </ul>
+          <button id="new-tab-btn" class="systemButton newTabButton" title="New tab"><span>＋</span></button>
+          <div class="sysActionButtons">
+            <button id="bookmarks-toggle-btn" class="systemButton sysActionButton bookmarksButton" title="Bookmarks">
+              <svg viewBox="0 0 384 512" width="14" height="14"><path fill="currentColor" d="M0 48C0 21.5 21.5 0 48 0l288 0c26.5 0 48 21.5 48 48l0 440c0 9-5 17.2-13 21.3s-17.6 3.4-24.9-1.8L192 397.5 37.9 507.5c-7.3 5.2-16.9 5.9-24.9 1.8S0 497 0 488L0 48z"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -66,39 +95,39 @@
     <main id="tab-viewport" class="tabFrame">
       <div id="page-container" class="pageBody" data-theme="mspa">
         <!-- Classic MSPA Navigation Banner -->
-        <nav id="mspa-nav-banner" class="navBanner" aria-label="MSPA Site Navigation">
-          <span class="navGroup navGroup1">
-            <a href="/" data-route="/">MSPAdventures.com</a>
-          </span>
-          <img class="candycorn" src="/assets/images/candycorn.gif" alt="|" />
-          <span class="navGroup navGroup2">
-            <a href="/mspa/6" data-route="/mspa/6">READ</a> |
-            <a href="/log" data-route="/log">LOG</a> |
-            <a href="/search" data-route="/search">SEARCH</a>
-          </span>
-          <img class="candycorn" src="/assets/images/candycorn.gif" alt="|" />
-          <span class="navGroup navGroup3">
-            <a href="/help" data-route="/help">SHOP</a> |
-            <a href="/music" data-route="/music">MUSIC</a>
-          </span>
-          <img class="candycorn" src="/assets/images/candycorn.gif" alt="|" />
-          <span class="navGroup navGroup4">
-            <a href="/evenmore" data-route="/evenmore">FORUMS</a> |
-            <a href="/evenmore" data-route="/evenmore">SECRETS</a> |
-            <a href="/credits" data-route="/credits">CREDITS</a>
-          </span>
-          <img class="candycorn" src="/assets/images/candycorn.gif" alt="|" />
-          <span class="navGroup navGroup5">
-            <a href="/map" data-route="/map">MAP</a> |
-            <a href="#saves" id="nav-saveload-link">SAVE/LOAD</a> |
-            <a href="/settings" data-route="/settings">SETTINGS</a>
-          </span>
+        <nav id="mspa-nav-banner" class="navBanner customNavBanner" aria-label="MSPA Site Navigation">
+          <div class="navList">
+            <ul class="nav1">
+              <li><a href="/" data-route="/">HOMESTUCK COLLECTION</a></li>
+            </ul>
+            <div class="candyCorn"></div>
+            <ul class="nav2">
+              <li><a href="/help" data-route="/help">HELP</a></li>
+            </ul>
+            <div class="candyCorn"></div>
+            <ul class="nav3">
+              <li><a href="/map" data-route="/map">MAP</a></li>
+              <li><a href="/log" data-route="/log">LOG</a></li>
+              <li><a href="/search" data-route="/search">SEARCH</a></li>
+            </ul>
+            <div class="candyCorn"></div>
+            <ul class="nav4">
+              <li><a href="/news" data-route="/news">NEWS</a></li>
+              <li><a href="/music" data-route="/music">MUSIC</a></li>
+            </ul>
+            <div class="candyCorn"></div>
+            <ul class="nav5">
+              <li><a href="/evenmore" data-route="/evenmore">MORE</a></li>
+              <li><a href="/settings" data-route="/settings">SETTINGS</a></li>
+              <li><a href="/credits" data-route="/credits">CREDITS</a></li>
+            </ul>
+          </div>
         </nav>
 
-        <!-- Page Frame (950px classic MSPA frame) -->
+        <!-- Page Frame (950px classic MSPA frame with 650px inner pageContent) -->
         <div id="page-frame" class="pageFrame">
           <div id="page-content" class="pageContent">
-            <h1 id="page-title" class="pageTitle">The Unofficial Homestuck Collection</h1>
+            <h2 id="page-title" class="pageTitle">The Unofficial Homestuck Collection</h2>
             <div id="media-container" class="mediaContent"></div>
             <div id="text-container" class="textContent">
               <p id="status" class="prattle">Initializing The Unofficial Homestuck Collection...</p>
@@ -106,10 +135,13 @@
             <div id="command-container" class="commandContent"></div>
             <div id="footer-nav" class="footerNav"></div>
           </div>
-          <footer id="page-footer" class="pageFooter">
-            <span class="footerBannerText">MS PAINT ADVENTURES — THE UNOFFICIAL HOMESTUCK COLLECTION</span>
-          </footer>
         </div>
+
+        <!-- Authentic 110px Page Footer (Dual Ghost Logos) -->
+        <footer id="page-footer" class="footer mspa">
+          <img src="/assets/images/mspalogo_mspa.png" class="bannerImage left" draggable="false" alt="MSPA Logo" />
+          <img src="/assets/images/mspalogo_mspa.png" class="bannerImage right" draggable="false" alt="MSPA Logo" />
+        </footer>
       </div>
     </main>
 

@@ -380,7 +380,7 @@ a:visited {
 }
 
 /* --------------------------------------------------------------------------
-   4. Top Browser Chrome: Tab Bar & Address Bar (F08)
+   4. Top Browser Chrome: TitleBar, TabBar & AddressBar (F08)
    -------------------------------------------------------------------------- */
 .appHeader {
   position: sticky;
@@ -389,175 +389,315 @@ a:visited {
   background-color: var(--header-bg);
   border-bottom: 1px solid var(--header-border);
   user-select: none;
-  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-ui, "Segoe UI", Arial, sans-serif);
   font-size: 12px;
+  --title-bar-height: 22px;
+  --address-bar-height: 28px;
+  --tab-height: 28px;
 }
 
-.tabSection {
+/* Row 1: TitleBar */
+.titleBar {
+  position: relative;
+  background: var(--header-bg);
+  color: var(--font-header);
+  margin-top: 1px;
+  height: calc(var(--title-bar-height) - 1px);
   display: flex;
   align-items: center;
-  background-color: var(--header-tabSection);
-  padding: 3px 6px 0 6px;
-  gap: 3px;
-  min-height: 29px;
-  overflow-x: auto;
+  justify-content: center;
+}
+
+.titleBarText {
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 80%;
+  margin: 0 auto;
+  padding-top: 2px;
+  font-size: 14px;
+  font-family: var(--font-family-ui, "Courier New", monospace);
+}
+
+.titleBarButtons {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  height: var(--title-bar-height);
+}
+
+.systemButton {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.1s ease;
+}
+
+.systemButton:not([disabled]):hover {
+  background: var(--header-buttonHoverState, rgba(0, 0, 0, 0.10));
+}
+
+.systemButton:not([disabled]):active {
+  background: var(--header-buttonClickState, rgba(0, 0, 0, 0.15));
+}
+
+.titleBarButtons .systemButton {
+  display: inline-block;
+  width: calc((8 / 7) * var(--title-bar-height));
+  height: var(--title-bar-height);
+  line-height: var(--title-bar-height);
+  text-align: center;
+  padding: 0 2px;
+  font-size: 13px;
+}
+
+#closeButton:hover {
+  color: #ffffff;
+  background: rgb(255, 73, 73);
+}
+
+/* Row 2 & 3: TabBar with Navigation & AddressBar */
+.tabBar {
+  display: flex;
+  flex-flow: row wrap;
+  background: var(--header-bg);
+  border-top: 1px solid var(--header-border);
+}
+
+.navigationButtons {
+  display: flex;
+  align-items: center;
+  height: var(--address-bar-height);
+  padding: 0 4px;
+  gap: 1px;
+}
+
+.historyButton {
+  color: var(--font-default);
+  background: transparent;
+  border: none;
+  height: var(--address-bar-height);
+  width: calc(var(--address-bar-height) * (8 / 7));
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.historyButton[disabled] {
+  color: var(--font-disabled, #a0a0a0);
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Row 2 Middle: JumpBox / AddressBar */
+.jumpBox {
+  flex: 1;
+  padding: 2px 6px 2px 2px;
+  display: flex;
+  align-items: center;
+}
+
+.jumpBoxWrapper {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  width: 100%;
+  border-radius: 2px;
+  border: 1px solid var(--header-border);
+  height: calc(var(--address-bar-height) - 4px);
+  background: var(--header-tabSection);
+}
+
+.jumpboxLink {
+  border-radius: 1px 0 0 1px;
+  background: var(--header-tabSection);
+  color: var(--font-header);
+  font-size: 16px;
+  font-weight: bold;
+  font-family: monospace;
+  text-decoration: none;
+  width: 24px;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.jumpBoxInput {
+  border-radius: 0 1px 1px 0;
+  padding: 2px 6px;
+  font-size: calc(var(--address-bar-height) * (3 / 5));
+  line-height: 20px;
+  width: 100%;
+  border: none;
+  outline: none;
+  font-family: var(--font-family-ui, "Courier New", monospace);
+  font-weight: bold;
+  background: var(--header-tabSection);
+  color: var(--font-header);
+}
+
+.browserActions {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-right: 4px;
+}
+
+.bookmarkStarBtn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--font-header);
+  opacity: 0.4;
+  border-radius: 2px;
+}
+
+.bookmarkStarBtn:hover,
+.bookmarkStarBtn.active {
+  opacity: 1.0;
+}
+
+.bookmarkStarBtn.active svg {
+  color: #ffbb00;
+}
+
+/* Line break between AddressBar row and TabBar row */
+.lineBreak {
+  flex-basis: 100%;
+  height: 0;
+}
+
+/* Row 3: TabSection */
+.tabSection {
+  background: var(--header-tabSection);
+  width: 100%;
+  height: var(--tab-height);
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--header-border);
 }
 
 .tabList {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  max-width: calc(100vw - 180px);
-  overflow-x: auto;
+  display: inline-flex;
+  max-width: calc(100% - 70px);
+  height: var(--tab-height);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+
+.tabShell {
+  border-right: 1px solid var(--header-border);
+  display: inline-flex;
+  width: 240px;
+  min-width: 40px;
+  height: var(--tab-height);
+  flex: 0 10 auto;
 }
 
 .tab {
   display: inline-flex;
-  align-items: center;
   justify-content: space-between;
-  min-width: 120px;
-  max-width: 220px;
-  height: 25px;
-  padding: 0 8px;
-  background-color: rgba(0, 0, 0, 0.14);
-  color: var(--font-default);
-  border: 1px solid var(--header-border);
-  border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: var(--tab-height);
   cursor: pointer;
-  transition: background-color 0.1s ease;
+  padding: 0 8px;
+  background: var(--header-tabSection);
+  color: var(--font-header);
+  border: none;
 }
 
-.tab:hover {
-  background-color: rgba(255, 255, 255, 0.35);
+.tab:not(.activeTab):hover {
+  background: var(--header-buttonHoverState, rgba(0, 0, 0, 0.10));
 }
 
 .tab.activeTab {
-  background-color: var(--header-bg);
+  background: var(--header-bg);
   font-weight: bold;
-  height: 26px;
 }
 
 .tabTitle {
+  flex: 1 10 auto;
+  padding-left: 2px;
+  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  font-size: 11px;
-  margin-right: 6px;
-}
-
-.tabCloseBtn {
-  background: transparent;
-  border: none;
-  color: inherit;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0 3px;
-  cursor: pointer;
-  border-radius: 3px;
-}
-
-.tabCloseBtn:hover {
-  background-color: #d80000;
-  color: #ffffff;
-}
-
-.newTabBtn,
-.chromeActionBtn {
-  height: 22px;
-  padding: 0 8px;
-  margin-bottom: 2px;
-  background-color: var(--header-bg);
-  color: var(--font-default);
-  border: 1px solid var(--header-border);
-  border-radius: 3px;
-  font-weight: bold;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.newTabBtn:hover,
-.chromeActionBtn:hover {
-  filter: brightness(0.95);
-}
-
-.chromeActionBtn.activeModBadge {
-  background-color: #168500;
-  color: #ffffff;
-  border-color: #0e4603;
-}
-
-.tabBarSpacer {
-  flex: 1;
-}
-
-.addressBar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background-color: var(--header-bg);
-  border-top: 1px solid var(--header-border);
-}
-
-.navControls,
-.addressActions {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.navBtn {
-  height: 24px;
-  min-width: 26px;
-  padding: 0 6px;
-  background-color: var(--card-bg);
-  color: var(--font-default);
-  border: 1px solid var(--header-border);
-  border-radius: 3px;
-  cursor: pointer;
   font-size: 12px;
 }
 
-.navBtn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.navBtn:not(:disabled):hover {
-  filter: brightness(0.92);
-}
-
-.addressForm {
-  display: flex;
-  flex: 1;
-  gap: 4px;
-}
-
-.addressInput {
-  flex: 1;
-  height: 24px;
-  padding: 2px 8px;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 13px;
-  font-weight: bold;
-  background-color: var(--card-bg);
-  color: var(--font-default);
-  border: 1px solid var(--header-border);
-  border-radius: 3px;
-}
-
-.addressGoBtn {
-  height: 24px;
-  padding: 0 10px;
-  background-color: var(--header-tabSection);
-  color: var(--font-default);
-  border: 1px solid var(--header-border);
-  border-radius: 3px;
-  font-weight: bold;
-  font-size: 11px;
+.closeTabButton {
+  float: right;
+  padding: 0;
+  margin-left: 5px;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  border-radius: 2px;
   cursor: pointer;
+}
+
+.closeTabButton:hover {
+  background: rgb(255, 73, 73);
+  color: #ffffff;
+}
+
+.newTabButton {
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--font-header);
+  background: transparent;
+  border: none;
+  height: var(--tab-height);
+  width: calc(var(--tab-height) * (8 / 7));
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.newTabButton:hover {
+  background: var(--header-buttonHoverState, rgba(0, 0, 0, 0.10));
+}
+
+.sysActionButtons {
+  margin-left: auto;
+  display: flex;
+  height: var(--tab-height);
+  align-items: center;
+  padding-right: 6px;
+}
+
+.bookmarksButton {
+  color: var(--font-header);
+  background: transparent;
+  border: none;
+  width: 32px;
+  height: var(--tab-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  cursor: pointer;
+}
+
+.bookmarksButton:hover {
+  opacity: 0.8;
 }
 
 /* --------------------------------------------------------------------------
