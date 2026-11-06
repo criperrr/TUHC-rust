@@ -106,3 +106,16 @@ Append new entries to the end of this file using the standard template:
   - `.agents/ARCHITECTURE.md`
   - `.agents/CURRENT.md`
 - **Impact / Next Steps:** Milestone 2-4 Gate fully passed. Ready for staging, pull request to dev, and CI merge.
+
+## `2026-11-05 22:52` - `feat(ui)`: Align chrome layout, navigation history, and audio delays with legacy collection
+
+- **Description:** Fixed navigation lockup where `popstate` inverted argument order in `pushUrl`, causing `targetKey` to be boolean and dropping history resolution. Aligned window chrome, address bar, tab bar, and navigation banner pixel-by-pixel with the original Electron collection (TitleBar row 1, AddressBar row 2, TabSection row 3, 5-group NavBanner with candycorn, 650px inner pageContent with #535353 outer body background, and authentic dual-ghost footer). Added client logging bridge to Rust backend.
+- **Files Modified:**
+  - `src/index.html`
+  - `src/styles/main.css`
+  - `src/js/app.js`
+  - `src/js/flashProps.js`
+  - `src-tauri/src/commands.rs`
+  - `src-tauri/src/lib.rs`
+  - `src-tauri/src/server/mod.rs`
+- **Impact / Next Steps:** Desktop application restarted with pixel parity matching legacy screenshots. All 6 verification gates pass.

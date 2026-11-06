@@ -7,12 +7,15 @@ Executive summary and direct file index for token-efficient agent navigation in 
 ## 1. Executive Summary
 
 **Project Title:** TUHC-rust (The Unofficial Homestuck Collection - Tauri 2.0 / Rust Re-write)  
-**Active Status:** Milestones 2–4 Complete & Gate APPROVED — Implementation on `feat/m2-m4-implementation`.  
-**Quality Gate Status:** All 5 verification gates passing 100% (Reviewers, Challengers, Forensic Auditor).
+**Active Status:** Milestones 2–4 Complete & Gate APPROVED — Forensic Visual Polish & Navigation Hardening on `feat/m2-m4-implementation`.  
+**Quality Gate Status:** All 6 verification gates passing 100% (Compilation, Formatting, Clippy, 31 Tests, 68 Python E2E, Memory 54MB < 150MB SLA).
 
 **Key Achievements:**
+- **Visual & Layout Parity Aligned with Original:** Corrected window chrome order (Row 1: TitleBar `#EEEEEE`, Row 2: AddressBar `#jumpBox`, Row 3: TabBar `#tabSection`). Restored authentic 5-group NavBanner with candycorn, `#535353` outer page background, 650px inner page frame, and authentic dual-ghost footer (`mspalogo_mspa.png`).
+- **Navigation Lockup Resolution:** Fixed `popstate` parameter mismatch in `pushUrl` and fortified history stack handling against undefined tab keys.
+- **Client Diagnostic Logging Bridge:** Added `client_log` Tauri IPC command and streaming bridge in `app.js` to mirror all webview console logs, errors, and click events directly to the Rust backend process and terminal output.
 - **Frontend Webview & Visual Parity (M2):** Authentic MSPA chrome with tabs, retro address bar, bookmarks persistence, sound test bar, 13 canonical themes, Courier typography, character quirk colors, and StoryPage rendering (`src/index.html`, `src/styles/main.css`, `src/js/app.js`).
-- **Media Engine & Ruffle Flash Sync (M3):** Self-hosted Ruffle WASM embedding inside srcdoc iframe, Frag IPC ActionScript bridge, millisecond audio calibration tables (`src/js/flashProps.js`), Cascade sub-segment offsets, Collide dynamic video curtain, and Sburb HTML5 Canvas support (`src/js/mediaEngine.js`).
+- **Media Engine & Ruffle Flash Sync (M3):** Authoritative 51-entry `audioDelay` table from legacy repo, self-hosted Ruffle WASM embedding inside srcdoc iframe, Frag IPC ActionScript bridge, Cascade sub-segment offsets, Collide dynamic video curtain, and Sburb HTML5 Canvas support (`src/js/mediaEngine.js`, `src/js/flashProps.js`).
 - **Community Mod Engine & Discord RPC (M4):** Legacy `mod.js` parser for single-file and directory mods, O(1) VFS overlay with generation tracking, native translation patch merging, VueHooks integration (`src/js/modHooks.js`), and cross-platform Discord Local IPC Rich Presence (`src-tauri/src/rpc/mod.rs`).
 - **Integration Seam Hardening:** Resolved ActionScript Frag IPC `#audioSeek&<ms>` parameter parsing, `renderMedia` boolean contract, direct settings coercion, and iframe DOM detachment for memory hygiene.
 - **Ultra-lightweight Memory Footprint:** Server RSS measured at ~62MB (headroom of >87MB under 150MB SLA ceiling).
