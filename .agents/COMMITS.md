@@ -233,3 +233,14 @@ Append new entries to the end of this file using the standard template:
   - `src/styles/main.css`
   - `.agents/CURRENT.md`
 - **Impact / Next Steps:** Discord Rich Presence stays connected persistently while reading Homestuck or listening to music, without 4000 handshake errors or socket drops.
+
+
+## `2026-11-06 09:40` - `feat(ui)`: Implement authentic animated GIF act banners, milestone headers, and typography
+
+- **Description:** Added authentic animated GIF banners across the Homestuck Adventure Map (`/map`) covering all acts and intermissions (`map_06_*.gif`), mounted dynamic milestone headers (`PageBanner.vue`) for Cascade (`header_cascade.gif`), Collide (`collide_header.gif`), Act 7 (`act7_header.gif`), X2COMBO, and Scratch, integrated the animated 3D video/GIF collection logo on the homepage, wired routes for `/help`, `/news`, `/unlock`, and `/decode` with authentic visual assets, and eliminated residual Arial leaks by setting global form element font inheritance (`button, input, select, textarea`) and fixing navigation candy corn divider assets.
+- **Files Modified:**
+  - `src/js/app.js`
+  - `src/styles/main.css`
+  - `src/index.html`
+  - `.agents/CURRENT.md`
+- **Impact / Next Steps:** Passes 100% of Rust tests (34/34) and Python E2E contracts (68/68). Ready for PR to `dev`.
