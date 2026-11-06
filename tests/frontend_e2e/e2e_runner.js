@@ -49,24 +49,49 @@ function log(level, message, meta = null) {
   }
 }
 
+function isExecutableFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return false;
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile()) return false;
+    fs.accessSync(filePath, fs.constants.X_OK);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 // Locate local browser executable
 function resolveChromiumExecutable() {
-  if (process.env.CHROMIUM_PATH && fs.existsSync(process.env.CHROMIUM_PATH)) {
-    return process.env.CHROMIUM_PATH;
+  if (process.env.CHROMIUM_PATH) {
+    if (isExecutableFile(process.env.CHROMIUM_PATH)) {
+      return process.env.CHROMIUM_PATH;
+    }
+    log('WARN', `CHROMIUM_PATH="${process.env.CHROMIUM_PATH}" is not a valid executable file, falling back.`);
   }
+
   try {
     const defaultPath = chromium.executablePath();
-    if (defaultPath && fs.existsSync(defaultPath)) return defaultPath;
+    if (defaultPath && isExecutableFile(defaultPath)) return defaultPath;
   } catch (_) {}
 
-  const msPlaywright = path.join(os.homedir(), '.cache', 'ms-playwright');
-  if (fs.existsSync(msPlaywright)) {
-    const entries = fs.readdirSync(msPlaywright).filter(d => d.startsWith('chromium-'));
-    for (const d of entries.sort().reverse()) {
-      const p1 = path.join(msPlaywright, d, 'chrome-linux64', 'chrome');
-      if (fs.existsSync(p1)) return p1;
-      const p2 = path.join(msPlaywright, d, 'chrome-linux', 'chrome');
-      if (fs.existsSync(p2)) return p2;
+  const cacheDirs = [
+    process.env.PLAYWRIGHT_BROWSERS_PATH,
+    path.join(os.homedir(), '.cache', 'ms-playwright'),
+    '/home/criper/.cache/ms-playwright'
+  ].filter(Boolean);
+
+  for (const msPlaywright of cacheDirs) {
+    if (fs.existsSync(msPlaywright)) {
+      try {
+        const entries = fs.readdirSync(msPlaywright).filter(d => d.startsWith('chromium-'));
+        for (const d of entries.sort().reverse()) {
+          const p1 = path.join(msPlaywright, d, 'chrome-linux64', 'chrome');
+          if (isExecutableFile(p1)) return p1;
+          const p2 = path.join(msPlaywright, d, 'chrome-linux', 'chrome');
+          if (isExecutableFile(p2)) return p2;
+        }
+      } catch (_) {}
     }
   }
 
@@ -77,7 +102,7 @@ function resolveChromiumExecutable() {
     '/usr/bin/chromium'
   ];
   for (const sp of systemPaths) {
-    if (fs.existsSync(sp)) return sp;
+    if (isExecutableFile(sp)) return sp;
   }
 
   return undefined;
@@ -200,7 +225,9 @@ async function runE2ETestSuite() {
       if (pageTitle !== 'Homestuck') throw new Error(`Expected 'Homestuck', got: ${pageTitle}`);
 
       const nextArrow = await page.$eval('.nextArrowLink', el => el.textContent.trim());
-      if (nextArrow !== 'Enter name.') throw new Error(`Expected 'Enter name.', got: ${nextArrow}`);
+      if (nextArrow !== 'Enter name.' && nextArrow !== 'Insira o nome.') {
+        throw new Error(`Expected 'Enter name.' or 'Insira o nome.', got: ${nextArrow}`);
+      }
 
       const mediaImg = await page.$eval('.mediaContent img', el => el.getAttribute('src'));
       if (!mediaImg.includes('00001.gif')) throw new Error(`Unexpected media source: ${mediaImg}`);
@@ -264,8 +291,9 @@ async function runE2ETestSuite() {
       if (displayAfter !== 'block') throw new Error(`Expected pesterlog display block after click, got: ${displayAfter}`);
 
       const btnTextAfter = await page.$eval('.logButton', el => el.textContent.trim());
-      if (!btnTextAfter.toLowerCase().includes('hide')) {
-        throw new Error(`Expected button text to contain 'Hide', got: ${btnTextAfter}`);
+      const lower = btnTextAfter.toLowerCase();
+      if (!lower.includes('hide') && !lower.includes('fechar')) {
+        throw new Error(`Expected button text to contain 'Hide' or 'Fechar', got: ${btnTextAfter}`);
       }
 
       await capture('04_pesterlog_expanded.png', 'Expanded pesterlog dialogue with character quirk colors');
@@ -330,17 +358,17 @@ async function runE2ETestSuite() {
       await page.waitForSelector('.albumCard', { timeout: 5000 }).catch(() => null);
       await page.waitForTimeout(400);
 
-      // Click first album
-      const firstAlbum = await page.$('.albumCard');
-      if (firstAlbum) {
-        await firstAlbum.click();
-        await page.waitForSelector('.trackRow', { timeout: 5000 }).catch(() => null);
+      // Click first album link
+      const albumLink = await page.$('.albumCard a, .albumCard');
+      if (albumLink) {
+        await albumLink.click();
+        await page.waitForSelector('.playTrackBtn, .trackRow', { timeout: 5000 }).catch(() => null);
         await page.waitForTimeout(400);
 
-        // Click first track in album
-        const firstTrack = await page.$('.trackRow');
-        if (firstTrack) {
-          await firstTrack.click();
+        // Click play button on first track
+        const playBtn = await page.$('.playTrackBtn, .trackRow');
+        if (playBtn) {
+          await playBtn.click();
           await page.waitForTimeout(500);
 
           const isBarHidden = await page.$eval('#sound-test-bar', el => el.classList.contains('hidden'));

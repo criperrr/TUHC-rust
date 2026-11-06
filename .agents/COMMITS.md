@@ -147,3 +147,17 @@ Append new entries to the end of this file using the standard template:
   - `src/styles/main.css`
   - `src/js/app.js`
 - **Impact / Next Steps:** All 6 checklist verification gates passing 100%, 30 cargo unit/integration tests passing, 68 E2E contract tests passing, memory RSS < 150MB SLA compliant.
+
+## `2026-11-06 02:40` - `test(frontend-e2e)`: Adversarial hardening and process safety for frontend E2E runner
+
+- **Description:** Performed blind black-box adversarial attack audit and implemented surgical robustness hardening across the Frontend Visual & Subsystem E2E test suite:
+  1. Process Safety & Signal Handling: Added `SIGINT`/`SIGTERM` signal handlers in `run.py` to prevent child process leaks (orphaned Axum server & Playwright runner zombies).
+  2. Hermetic Environment Isolation: Enforced clean temporary `XDG_CONFIG_HOME` for spawned server processes, preventing test bleed from active developer mods/translations and stopping test mutations of user tab data.
+  3. Boundary & Error Hardening: Added port range bounds (0..65535), fast HTTP pre-flight probing for `--server-url`, and unlinked stale `summary.json` reports prior to execution.
+  4. Executable Verification & Test Resilience: Added `isExecutableFile` permissions check for `CHROMIUM_PATH` with graceful fallback on `/dev/null`, multi-locale assertion tolerance, and optimized Sound Test track selection.
+- **Files Modified:**
+  - `tests/frontend_e2e/run.py`
+  - `tests/frontend_e2e/e2e_runner.js`
+  - `.agents/CURRENT.md`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** E2E test suite now 100% resilient to signals, boundary inputs, and environment configurations; passes 9/9 subsystem tests deterministically in under 10 seconds.

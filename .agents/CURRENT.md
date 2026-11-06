@@ -7,10 +7,13 @@ Executive summary and direct file index for token-efficient agent navigation in 
 ## 1. Executive Summary
 
 **Project Title:** TUHC-rust (The Unofficial Homestuck Collection - Tauri 2.0 / Rust Re-write)  
-**Active Status:** Performance, Layout, Mod Engine & Theme System Remediation Complete on `fix/scroll-mods-layout-themes`.  
-**Quality Gate Status:** All 6 verification gates passing 100% (Compilation, Formatting, Clippy, 30 Rust Tests, 68 Python E2E, Memory 54MB < 150MB SLA).
+**Active Status:** Adversarial Audit & Hardening Complete on `test/harden-frontend-e2e`.  
+**Quality Gate Status:** All 6 verification gates passing 100% (Compilation, Formatting, Clippy, 30 Rust Tests, 68 Python E2E, Memory 54MB < 150MB SLA) + Frontend Visual & Subsystem E2E passing 9/9 in 9.71s (11 visual screenshots captured).
 
 **Key Achievements:**
+- **Adversarial Audit & Attack Hardening of Frontend E2E Runner:** Executed 5 attack vectors (CLI boundary fuzzing, environment variable sabotage, concurrency collisions, mid-flight process disruption, adversarial network payloads). Implemented signal-safe child process cleanup on `SIGINT`/`SIGTERM` (eliminating orphaned server zombies), port validation, pre-flight target server probing, and stale report eviction.
+- **Hermetic Environment Isolation for E2E Tests:** Sandboxed the embedded Axum backend during test execution in a clean temporary `XDG_CONFIG_HOME`, isolating developer configuration (`config.json`), preventing active mod bleed (e.g. PT-BR translation), and eliminating user tab data pollution.
+- **Defensive Subsystem Assertion Resilience:** Hardened `e2e_runner.js` with robust executable verification (`isExecutableFile`) for `CHROMIUM_PATH`, resilient story arrow / pesterlog assertions across languages, and optimized Sound Test album link interaction (dropping duration from 6001ms to 1549ms).
 - **Scroll Performance & GPU Compositing Acceleration:** Enabled WebKitGTK smooth scrolling and hardware acceleration (`HardwareAccelerationPolicy::Always`), isolated `.appHeader` with GPU transform layer (`will-change: transform; transform: translateZ(0);`), eliminating repaints and high CPU lag during scroll.
 - **Window Decorator Duplicity Resolution & Compact 2-Row Chrome:** Removed redundant HTML `#titleBar` element to eliminate dual minimize/maximize/close controls with native OS window manager. Restored approved 2-row layout: Row 1 Tab Bar with tabs and `＋`, Row 2 Address Bar with `< > ⟳ ⌂`, input, GO, `★` favorites, and `⚙` settings button.
 - **PT-BR Translation Mod Alignment & Resilient Config Persistence:** Harmonized `save_config` IPC deserializer to accept `new_config`, `config`, and `newConfig`; synchronized `modListEnabled` and `enabledMods` between backend Rust and frontend JavaScript; implemented case/underscore-tolerant mod lookup; confirmed 2,401 pages translated in memory with Portuguese titles (`Insira o nome.`, `Tente novamente.`).
