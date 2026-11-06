@@ -244,3 +244,17 @@ Append new entries to the end of this file using the standard template:
   - `src/index.html`
   - `.agents/CURRENT.md`
 - **Impact / Next Steps:** Passes 100% of Rust tests (34/34) and Python E2E contracts (68/68). Ready for PR to `dev`.
+
+## `2026-11-06 13:52` - `fix(ui)`: resolve animated gif map titles, homepage 3d logo and typography alignment
+
+- **Description:** Fixed broken image `[?]` icons on Adventure Map by updating `resolveAssetUrl` to route all top-level paths (`/maps/`, `/images/`, `/storyfiles/`, `/archive/`, etc.) through Axum VFS `${state.assetBase}/assets${url}`. Replaced blank white `<video>` on Homepage with authentic 227-frame 3D animated GIF (`collection_logo.gif`) and static fallback when reducedMotion is enabled. Replaced placeholder on Problem Sleuth map with authentic `map_04.gif`. Converted and bundled `courierstuck` and `Courier Prime` to WOFF format with preload links and strict font inheritance, completely eliminating Arial/sans-serif across the application. Added Discord browsing presence support in commands and rpc.
+- **Files Modified:**
+  - `src-tauri/src/commands.rs`
+  - `src-tauri/src/rpc/mod.rs`
+  - `src-tauri/src/server/mod.rs`
+  - `src/index.html`
+  - `src/js/app.js`
+  - `src/styles/main.css`
+  - `src/fonts/` (WOFF and non-space font copies)
+  - `.agents/CURRENT.md`
+- **Impact / Next Steps:** Passed all 31 unit tests, 3 adversarial tests, 68 Tier 1-4 Python E2E contract tests, clippy, and memory gatekeeper (<150MB RSS). Ready for PR merge to `dev`.

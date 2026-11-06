@@ -157,6 +157,9 @@
         payload.pageTitle = title;
         payload.title = title;
       }
+      if (!payload.mode) {
+        payload.mode = pid ? 'reading' : 'browsing';
+      }
     }
 
     if (command === 'set_discord_music_presence') {
@@ -222,35 +225,26 @@
     url = url.replace(/^https?:\/\/(?:www\.)?mspaintadventures\.com\//i, '/');
 
     let resolved = '';
-    if (url.startsWith('assets://')) {
-      const rest = url.slice('assets://'.length).replace(/^\/+/, '');
-      resolved = `${state.assetBase}/assets/${rest}`;
-    } else if (url.startsWith('/assets/')) {
-      resolved = `${state.assetBase}${url}`;
-    } else if (
-      url.startsWith('/storyfiles/') ||
-      url.startsWith('/archive/') ||
-      url.startsWith('/images/') ||
-      url.startsWith('/fonts/') ||
-      url.startsWith('/advimgs/')
-    ) {
-      resolved = `${state.assetBase}/assets${url}`;
-    } else if (
-      url.startsWith('storyfiles/') ||
-      url.startsWith('archive/') ||
-      url.startsWith('images/') ||
-      url.startsWith('fonts/') ||
-      url.startsWith('advimgs/')
-    ) {
-      resolved = `${state.assetBase}/assets/${url}`;
-    } else if (
-      url.startsWith('/') ||
+    if (
       url.startsWith('http://') ||
       url.startsWith('https://') ||
       url.startsWith('data:') ||
       url.startsWith('blob:')
     ) {
-      resolved = url;
+      return url;
+    }
+
+    if (url.startsWith('assets://')) {
+      const rest = url.slice('assets://'.length).replace(/^\/+/, '');
+      resolved = `${state.assetBase}/assets/${rest}`;
+    } else if (url.startsWith('/assets/')) {
+      resolved = `${state.assetBase}${url}`;
+    } else if (url.startsWith('/styles/') || url.startsWith('/js/') || url === '/' || url === '/index.html') {
+      resolved = `${state.assetBase}${url}`;
+    } else if (url.startsWith('/fonts/')) {
+      resolved = `${state.assetBase}${url}`;
+    } else if (url.startsWith('/')) {
+      resolved = `${state.assetBase}/assets${url}`;
     } else {
       resolved = `${state.assetBase}/assets/${url}`;
     }
@@ -1575,7 +1569,7 @@
     container.innerHTML = `
       <div class="musicContainer">
         ${renderMusicNavHeader('discography')}
-        <h2 style="font-family: 'Courier New', monospace; text-align: left; margin-bottom: 12px;">DISCOGRAPHY (${albumKeys.length} ALBUMS)</h2>
+        <h2 style="font-family: 'courierstuck', 'Courier Prime', 'Courier New', monospace; text-align: left; margin-bottom: 12px;">DISCOGRAPHY (${albumKeys.length} ALBUMS)</h2>
         <div id="album-grid" class="albumGrid">
           ${albumKeys.map((slug) => {
             const alb = albums[slug];
@@ -1633,7 +1627,7 @@
     container.innerHTML = `
       <div class="musicContainer">
         ${renderMusicNavHeader('tracks')}
-        <h2 style="font-family: 'Courier New', monospace; text-align: left; margin-bottom: 12px;">ALL TRACKS (${trackKeys.length})</h2>
+        <h2 style="font-family: 'courierstuck', 'Courier Prime', 'Courier New', monospace; text-align: left; margin-bottom: 12px;">ALL TRACKS (${trackKeys.length})</h2>
         <table class="musicTrackTable">
           <thead>
             <tr>
@@ -1721,7 +1715,7 @@
             </div>
           </div>
           <div style="flex: 1; min-width: 300px;">
-            <h2 style="font-family: 'Courier New', monospace; margin-top: 0;">${album.name}</h2>
+            <h2 style="font-family: 'courierstuck', 'Courier Prime', 'Courier New', monospace; margin-top: 0;">${album.name}</h2>
             <table class="musicTrackTable" style="margin-top: 12px;">
               <thead>
                 <tr>
@@ -1801,7 +1795,7 @@
             </div>
           </div>
           <div style="flex: 1; min-width: 300px;">
-            <h2 style="font-family: 'Courier New', monospace; margin-top: 0;">${track.name}</h2>
+            <h2 style="font-family: 'courierstuck', 'Courier Prime', 'Courier New', monospace; margin-top: 0;">${track.name}</h2>
             <div class="soundTestPlayerBox">
               <h4 style="margin: 0 0 8px 0;">Sound Test Audio Player</h4>
               <button id="direct-play-btn" class="playTrackBtn" style="padding: 6px 14px; font-size: 13px;">&#9654; Play Track</button>
@@ -1949,7 +1943,7 @@
 
     container.innerHTML = `
       <div class="systemPageContainer">
-        <h1 style="font-family: 'Courier New', monospace;">SETTINGS &amp; PREFERENCES</h1>
+        <h1 style="font-family: 'courierstuck', 'Courier Prime', 'Courier New', monospace;">SETTINGS &amp; PREFERENCES</h1>
 
         <!-- Section 1: Themes & Appearance -->
         <div class="settingsSectionCard">
@@ -2437,10 +2431,11 @@
       <!-- Top Logo Card -->
       <div class="card logoCard">
         <a href="/" class="cardContent">
-          <div class="topLogo">
-            <video class="collectionLogo" src="${resolveAssetUrl('/archive/collection/logo_v2_full.webm')}" poster="${resolveAssetUrl('/assets/collection_logo.gif')}" autoplay loop muted playsinline style="width: 800px; max-width: 100%; display: block; margin: 0 auto;">
-              <img src="${resolveAssetUrl('/assets/collection_logo.gif')}" alt="The Unofficial Homestuck Collection" class="collectionLogo" style="width: 800px; max-width: 100%; display: block; margin: 0 auto;" />
-            </video>
+          <div class="topLogo" style="text-align: center;">
+            <img src="${state.config.settings?.reducedMotion ? resolveAssetUrl('/archive/collection/logo_v2_static.png') : resolveAssetUrl('/assets/collection_logo.gif')}"
+                 alt="The Unofficial Homestuck Collection"
+                 class="collectionLogo"
+                 style="width: 800px; max-width: 100%; display: block; margin: 0 auto;" />
           </div>
         </a>
         <div class="cardContent collection"></div>
@@ -2805,7 +2800,7 @@
         <div class="systemPageContainer" style="text-align: center; padding: 20px 0;">
           <h2 class="pageTitle">Problem Sleuth Map</h2>
           <div style="margin: 15px auto;">
-            <a href="/unlock/PS_titlescreen"><img src="${resolveAssetUrl('/images/v2_biglogo.gif')}" alt="Problem Sleuth" style="max-width: 100%;" /></a>
+            <a href="/unlock/PS_titlescreen"><img src="${resolveAssetUrl('/maps/map_04.gif')}" alt="Problem Sleuth Map" style="max-width: 100%; border: none;" /></a>
           </div>
           <p><a href="/mspa/000219">&gt; Begin Problem Sleuth</a></p>
         </div>
@@ -2919,7 +2914,7 @@
         <div style="text-align: center; margin: 15px 0 20px 0;">
           <img src="${resolveAssetUrl('/images/logo.gif')}" alt="MS Paint Adventures" class="logo" style="max-width: 100%; display: block; margin: 0 auto;" />
         </div>
-        <h1 style="font-family: 'Courier New', monospace; text-align: center;">ADVENTURE LOG</h1>
+        <h1 style="font-family: 'courierstuck', 'Courier Prime', 'Courier New', monospace; text-align: center;">ADVENTURE LOG</h1>
         <div class="settingsSectionCard">
           <p style="font-size: 12px; margin-bottom: 12px;">Jump directly into any section of the adventure:</p>
           <ul style="font-size: 13px; line-height: 1.8;">
@@ -3028,7 +3023,7 @@
         <div style="text-align: center; margin: 15px 0 20px 0;">
           <img src="${resolveAssetUrl('/images/v2_biglogo.gif')}" alt="MS Paint Adventures" class="logo" style="max-width: 100%; display: block; margin: 0 auto;" />
         </div>
-        <h1 style="font-family: 'Courier New', monospace; text-align: center;">UNLOCKABLE CONTENT</h1>
+        <h1 style="font-family: 'courierstuck', 'Courier Prime', 'Courier New', monospace; text-align: center;">UNLOCKABLE CONTENT</h1>
         <div class="settingsSectionCard" style="text-align: center;">
           <img src="${resolveAssetUrl('/images/unlock_gamecode.gif')}" alt="Game Code" style="margin: 10px auto; display: block; max-width: 100%;" />
           <p style="font-size: 12px; margin: 12px 0;">
@@ -3095,7 +3090,7 @@
     applyTheme(computeActiveTheme(null, state.config.settings));
     container.innerHTML = `
       <div class="systemPageContainer">
-        <h1 style="font-family: 'Courier New', monospace;">SEARCH ADVENTURE</h1>
+        <h1 style="font-family: 'courierstuck', 'Courier Prime', 'Courier New', monospace;">SEARCH ADVENTURE</h1>
         <div class="settingsSectionCard">
           <form id="story-search-form" style="display: flex; gap: 8px; margin-bottom: 12px;">
             <input id="story-search-input" class="addressInput" type="text" value="${initialQuery}" placeholder="Enter page number or keyword..." style="flex: 1;" />
@@ -3126,7 +3121,7 @@
     applyTheme(computeActiveTheme(null, state.config.settings));
     container.innerHTML = `
       <div class="systemPageContainer">
-        <h1 style="font-family: 'Courier New', monospace;">CREDITS &amp; ATTRIBUTIONS</h1>
+        <h1 style="font-family: 'courierstuck', 'Courier Prime', 'Courier New', monospace;">CREDITS &amp; ATTRIBUTIONS</h1>
         <div class="settingsSectionCard">
           <h3>Original Work</h3>
           <p style="font-size: 12px;"><strong>MS Paint Adventures &amp; Homestuck:</strong> Created by Andrew Hussie (2006–2016).</p>
@@ -3299,6 +3294,34 @@
       if (bannerContainer) {
         bannerContainer.innerHTML = '';
         bannerContainer.style.display = 'none';
+      }
+
+      // Update Discord Browsing Presence if enabled and sound test is not actively playing
+      if (state.config && state.config.settings && state.config.settings.enableDiscordRpc) {
+        if (!state.soundTest || !state.soundTest.playing) {
+          let browsingTitle = 'Main Menu';
+          switch (route.mode) {
+            case 'HOMEPAGE': browsingTitle = 'Main Menu'; break;
+            case 'SETTINGS': browsingTitle = 'Settings'; break;
+            case 'HELP': browsingTitle = 'Help & FAQ'; break;
+            case 'NEWS': browsingTitle = 'News & Updates'; break;
+            case 'UNLOCK': browsingTitle = 'Unlockable Content'; break;
+            case 'DECODE': browsingTitle = 'Decoding Tools'; break;
+            case 'MAP': browsingTitle = 'Adventure Map'; break;
+            case 'LOG': browsingTitle = 'Adventure Log'; break;
+            case 'SEARCH': browsingTitle = 'Search'; break;
+            case 'CREDITS': browsingTitle = 'Credits'; break;
+            case 'SBAHJ': browsingTitle = 'Sweet Bro and Hella Jeff'; break;
+            case 'EVENMORE': browsingTitle = 'More Adventures'; break;
+            case 'MUSIC': browsingTitle = 'Sound Test'; break;
+            default: browsingTitle = 'Browsing Collection'; break;
+          }
+          ipcInvoke('set_discord_presence', {
+            mode: 'browsing',
+            title: browsingTitle,
+            details: 'Browsing Collection'
+          }).catch(() => {});
+        }
       }
     }
 
