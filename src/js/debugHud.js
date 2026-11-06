@@ -171,7 +171,13 @@
   }
 
   function onFrame(now) {
-    if (!isVisible) return;
+    if (!isVisible || isMinimized) {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      return;
+    }
 
     frameCount++;
     const delta = now - lastFrameTime;
@@ -222,7 +228,7 @@
     lastFpsUpdateTime = performance.now();
     frameCount = 0;
 
-    if (!rafId) {
+    if (!rafId && isVisible && !isMinimized) {
       rafId = requestAnimationFrame(onFrame);
     }
     if (!pollIntervalId) {
@@ -247,6 +253,10 @@
     if (!hudContainer) return;
 
     if (isMinimized) {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       hudContainer.classList.add('minimized');
       if (hudBodyEl) hudBodyEl.style.display = 'none';
       if (hudMiniContentEl) hudMiniContentEl.parentElement.style.display = 'flex';
@@ -256,6 +266,12 @@
       if (hudBodyEl) hudBodyEl.style.display = 'flex';
       if (hudMiniContentEl) hudMiniContentEl.parentElement.style.display = 'none';
       if (hudMinBtn) hudMinBtn.textContent = '[-]';
+      if (isVisible && !rafId) {
+        lastFrameTime = performance.now();
+        lastFpsUpdateTime = performance.now();
+        frameCount = 0;
+        rafId = requestAnimationFrame(onFrame);
+      }
     }
     try {
       localStorage.setItem('tuhc_debug_hud_minimized', isMinimized ? 'true' : 'false');

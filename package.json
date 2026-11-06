@@ -1,0 +1,11 @@
+{
+  "name": "tuhc-tauri",
+  "version": "2.8.1",
+  "private": true,
+  "description": "The Unofficial Homestuck Collection (Tauri 2.0 Edition)",
+  "scripts": {
+    "dev": "cargo run",
+    "build": "cargo build",
+    "test": "cargo test"
+  }
+}
