@@ -102,7 +102,12 @@ impl ModRegistry {
         parsed: parser::ParsedModInfo,
         enabled_list: &[String],
     ) {
-        let enabled = enabled_list.contains(&id);
+        let enabled = enabled_list.iter().any(|e| {
+            e == &id
+                || e.eq_ignore_ascii_case(&id)
+                || e.replace('_', " ").eq_ignore_ascii_case(&id)
+                || e.replace(' ', "_").eq_ignore_ascii_case(&id)
+        });
         let has_trees = !parsed.trees.is_empty();
         let has_hooks = !parsed.vue_hooks.is_empty();
         let has_edit = parsed.edit
@@ -150,14 +155,20 @@ impl ModRegistry {
     }
 
     pub fn toggle_mod(&mut self, mod_id: &str, enabled: bool) -> Result<bool, String> {
-        if let Some(m) = self.mods.iter_mut().find(|m| m.meta.id == mod_id) {
+        if let Some(m) = self.mods.iter_mut().find(|m| {
+            m.meta.id == mod_id
+                || m.meta.id.eq_ignore_ascii_case(mod_id)
+                || m.meta.id.replace('_', " ").eq_ignore_ascii_case(mod_id)
+                || m.meta.id.replace(' ', "_").eq_ignore_ascii_case(mod_id)
+        }) {
+            let actual_id = m.meta.id.clone();
             m.meta.enabled = enabled;
             if enabled {
-                if !self.enabled_order.iter().any(|id| id == mod_id) {
-                    self.enabled_order.push(mod_id.to_string());
+                if !self.enabled_order.iter().any(|id| id == &actual_id) {
+                    self.enabled_order.push(actual_id);
                 }
             } else {
-                self.enabled_order.retain(|id| id != mod_id);
+                self.enabled_order.retain(|id| id != &actual_id);
             }
             Ok(enabled)
         } else {
@@ -350,5 +361,58 @@ module.exports = {
         let p1901_a = patches_a_only.get("001901").unwrap();
         assert_eq!(p1901_a.title.as_deref(), Some("Mod A Title Overwrite"));
         assert!(p1901_a.content.is_none());
+    }
+
+    #[test]
+    fn test_homestuck_ptbr_patch_application() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mods_dir = temp_dir.path().join("mods");
+        let ptbr_dir = mods_dir.join("Homestuck PT-BR");
+        std::fs::create_dir_all(&ptbr_dir).unwrap();
+
+        let mod_js = r#"
+module.exports = {
+    title: "Homestuck PT-BR",
+    author: "Homestuck BR Team",
+    version: 2.0,
+    edit: true,
+    computed(api) {
+        const translation = api.readJson('./translation2.json');
+    }
+};
+"#;
+        std::fs::write(ptbr_dir.join("mod.js"), mod_js).unwrap();
+
+        let translation2 = serde_json::json!({
+            "001901": {
+                "content": "Um jovem rapaz está em seu quarto..."
+            },
+            "001902": {
+                "title": "Insira o nome."
+            },
+            "001903": {
+                "title": "Tente novamente."
+            }
+        });
+        std::fs::write(
+            ptbr_dir.join("translation2.json"),
+            serde_json::to_string(&translation2).unwrap(),
+        )
+        .unwrap();
+
+        let enabled = vec!["Homestuck PT-BR".to_string()];
+        let registry = ModRegistry::load_from_dir(temp_dir.path(), &enabled);
+        assert!(registry.is_enabled("Homestuck PT-BR"));
+
+        let patches = registry.load_active_patches();
+        assert_eq!(patches.len(), 3);
+        assert_eq!(
+            patches.get("001902").unwrap().title.as_deref(),
+            Some("Insira o nome.")
+        );
+        assert_eq!(
+            patches.get("001903").unwrap().title.as_deref(),
+            Some("Tente novamente.")
+        );
     }
 }

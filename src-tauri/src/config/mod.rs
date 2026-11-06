@@ -321,6 +321,8 @@ pub struct AppConfig {
     pub settings: AppSettings,
     #[serde(default = "default_app_version", alias = "app_version")]
     pub app_version: String,
+    #[serde(default, alias = "enabled_mods")]
+    pub enabled_mods: Option<Vec<String>>,
 }
 
 fn default_app_version() -> String {
@@ -365,6 +367,7 @@ impl Default for AppConfig {
             save_data: SaveData::default(),
             settings: AppSettings::default(),
             app_version: default_app_version(),
+            enabled_mods: Some(Vec::new()),
         }
     }
 }
@@ -386,8 +389,20 @@ impl AppConfig {
         }
 
         match fs::read_to_string(&path) {
-            Ok(content) => match serde_json::from_str(&content) {
-                Ok(cfg) => cfg,
+            Ok(content) => match serde_json::from_str::<AppConfig>(&content) {
+                Ok(mut cfg) => {
+                    if cfg.settings.mod_list_enabled.is_empty() {
+                        if let Some(ref em) = cfg.enabled_mods {
+                            if !em.is_empty() {
+                                cfg.settings.mod_list_enabled = em.clone();
+                            }
+                        }
+                    }
+                    if cfg.enabled_mods.is_none() {
+                        cfg.enabled_mods = Some(cfg.settings.mod_list_enabled.clone());
+                    }
+                    cfg
+                }
                 Err(e) => {
                     log::error!("Failed to parse config.json, using defaults: {}", e);
                     Self::default()

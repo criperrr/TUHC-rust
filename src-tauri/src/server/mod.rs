@@ -605,6 +605,13 @@ pub async fn dispatch_ipc(
             crate::commands::client_log(level.to_string(), message.to_string());
             json_response(StatusCode::OK, serde_json::json!({"status": "ok"}))
         }
+        "get_debug_metrics" => {
+            let metrics = crate::commands::collect_debug_metrics();
+            json_response(
+                StatusCode::OK,
+                serde_json::to_value(&metrics).unwrap_or_default(),
+            )
+        }
         "win_minimize" | "win_maximize" | "win_close" => {
             json_response(StatusCode::OK, serde_json::json!({"status": "ok"}))
         }

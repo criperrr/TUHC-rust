@@ -137,7 +137,10 @@ pub fn run() {
                         if let Some(settings) = inner.settings() {
                             settings.set_enable_page_cache(false);
                             settings.set_enable_offline_web_application_cache(false);
-                            settings.set_enable_smooth_scrolling(false);
+                            settings.set_enable_smooth_scrolling(true);
+                            settings.set_hardware_acceleration_policy(
+                                webkit2gtk::HardwareAccelerationPolicy::Always,
+                            );
                         }
                     });
                 }
@@ -169,7 +172,8 @@ pub fn run() {
             commands::client_log,
             commands::win_minimize,
             commands::win_maximize,
-            commands::win_close
+            commands::win_close,
+            commands::get_debug_metrics
         ])
         .run(tauri::generate_context!())
         .expect("error while running tuhc application");

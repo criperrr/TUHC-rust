@@ -116,8 +116,13 @@
       command = 'get_available_mods';
     }
 
-    if (command === 'save_config' && !payload.config && !payload.new_config && !payload.newConfig) {
-      payload = { config: payload };
+    if (command === 'save_config') {
+      const cfgObj = payload.config || payload.new_config || payload.newConfig || payload;
+      payload = {
+        config: cfgObj,
+        new_config: cfgObj,
+        newConfig: cfgObj
+      };
     }
 
     if (command === 'get_story_page') {
@@ -229,7 +234,17 @@
 
     const saveAction = async () => {
       try {
-        await ipcInvoke('save_config', { config: state.config });
+        if (!state.config.settings) state.config.settings = {};
+        if (Array.isArray(state.config.enabledMods)) {
+          state.config.settings.modListEnabled = [...state.config.enabledMods];
+        } else if (Array.isArray(state.config.settings.modListEnabled)) {
+          state.config.enabledMods = [...state.config.settings.modListEnabled];
+        }
+        await ipcInvoke('save_config', {
+          config: state.config,
+          new_config: state.config,
+          newConfig: state.config
+        });
       } catch (err) {
         console.error('[TUHC-Config] Failed to persist config:', err);
       }
@@ -247,12 +262,22 @@
       const cfg = await ipcInvoke('load_config');
       if (cfg && typeof cfg === 'object') {
         state.config = Object.assign(state.config, cfg);
+        const list = (cfg.settings && Array.isArray(cfg.settings.modListEnabled))
+          ? cfg.settings.modListEnabled
+          : (Array.isArray(cfg.enabledMods) ? cfg.enabledMods : []);
+        state.config.enabledMods = [...list];
+        if (!state.config.settings) state.config.settings = {};
+        state.config.settings.modListEnabled = [...list];
+
         if (cfg.tabData && cfg.tabData.activeTabKey) {
           state.activeTabKey = cfg.tabData.activeTabKey;
         }
         if (cfg.settings) {
           applyGlobalSettings(cfg.settings);
         }
+
+        const initialTheme = computeActiveTheme(null, state.config.settings);
+        applyTheme(initialTheme);
       }
     } catch (err) {
       console.warn('[TUHC-Config] load_config failed, using defaults:', err);
@@ -847,31 +872,64 @@
      ========================================================================== */
 
   function computeActiveTheme(pageTheme, settings) {
-    if (settings.forceThemeOverride && settings.themeOverride && settings.themeOverride !== 'default') {
-      return settings.themeOverride;
+    const s = settings || (state && state.config && state.config.settings) || {};
+    // 1. Force override takes precedence over everything
+    if (s.forceThemeOverride && s.themeOverride && s.themeOverride !== 'default') {
+      return s.themeOverride;
     }
+    // 2. Canonical story theme from mspa.json if present (e.g. scratch, cascade, collide, A6A6, retro, sbahj)
     if (pageTheme && typeof pageTheme === 'string' && pageTheme.trim() !== '') {
       return pageTheme.trim();
     }
-    if (settings.themeOverride && settings.themeOverride !== 'default') {
-      return settings.themeOverride;
+    // 3. User theme override takes precedence for all standard story & system pages
+    if (s.themeOverride && s.themeOverride !== 'default') {
+      return s.themeOverride;
     }
+    // 4. Default MSPA theme
     return 'mspa';
   }
 
   function applyTheme(theme) {
     if (typeof document === 'undefined') return;
+    const validTheme = theme || 'mspa';
     const appEl = document.getElementById('app');
     const pageContainer = document.getElementById('page-container');
-    const validTheme = theme || 'mspa';
+    const body = document.body;
+    const docEl = document.documentElement;
+
+    if (docEl) {
+      docEl.setAttribute('data-theme', validTheme);
+    }
+
+    if (body) {
+      body.setAttribute('data-theme', validTheme);
+      const toRemove = [];
+      body.classList.forEach((cls) => {
+        if (cls.startsWith('theme-')) toRemove.push(cls);
+      });
+      toRemove.forEach((cls) => body.classList.remove(cls));
+      body.classList.add('theme-' + validTheme);
+    }
 
     if (appEl) {
       appEl.setAttribute('data-theme', validTheme);
-      appEl.className = 'theme-' + validTheme;
+      const toRemove = [];
+      appEl.classList.forEach((cls) => {
+        if (cls.startsWith('theme-')) toRemove.push(cls);
+      });
+      toRemove.forEach((cls) => appEl.classList.remove(cls));
+      appEl.classList.add('theme-' + validTheme);
     }
+
     if (pageContainer) {
       pageContainer.setAttribute('data-theme', validTheme);
-      pageContainer.className = 'pageBody theme-' + validTheme;
+      const toRemove = [];
+      pageContainer.classList.forEach((cls) => {
+        if (cls.startsWith('theme-')) toRemove.push(cls);
+      });
+      toRemove.forEach((cls) => pageContainer.classList.remove(cls));
+      pageContainer.classList.add('pageBody');
+      pageContainer.classList.add('theme-' + validTheme);
     }
   }
 
@@ -1816,16 +1874,17 @@
           <div id="mods-list">
             ${mods.length === 0 ? '<p style="font-size: 12px; color: #888;">No community mods found in mod directory.</p>' : ''}
             ${mods.map((mod) => {
-              const isEnabled = cfg.enabledMods && cfg.enabledMods.includes(mod.id);
+              const enabledList = (cfg.settings && cfg.settings.modListEnabled) || cfg.enabledMods || [];
+              const isEnabled = enabledList.includes(mod.id) || mod.enabled;
               return `
                 <div class="modCard" data-mod-id="${mod.id}">
                   <div class="modCardHeader">
-                    <span>${mod.name || mod.id}</span>
+                    <span style="font-weight: bold;">${mod.title || mod.name || mod.id}</span>
                     <button class="primaryActionBtn toggleModBtn" data-mod-id="${mod.id}" style="background-color: ${isEnabled ? '#168500' : '#666666'};">
                       ${isEnabled ? 'ENABLED' : 'DISABLED'}
                     </button>
                   </div>
-                  <div style="font-size: 11px; opacity: 0.85;">${mod.description || 'Community expansion mod.'}</div>
+                  <div style="font-size: 11px; opacity: 0.85; margin: 4px 0;">${mod.description || 'Community expansion mod.'}</div>
                   <div class="modBadges">
                     <span class="modBadge">v${mod.version || '1.0.0'}</span>
                     ${mod.author ? `<span class="modBadge">by ${mod.author}</span>` : ''}
@@ -1843,7 +1902,8 @@
     if (themeSelect) {
       themeSelect.addEventListener('change', (e) => {
         settings.themeOverride = e.target.value;
-        applyTheme(e.target.value);
+        const newTheme = computeActiveTheme(null, settings);
+        applyTheme(newTheme);
         persistConfig();
       });
     }
@@ -1852,6 +1912,8 @@
     if (forceThemeBox) {
       forceThemeBox.addEventListener('change', (e) => {
         settings.forceThemeOverride = e.target.checked;
+        const newTheme = computeActiveTheme(null, settings);
+        applyTheme(newTheme);
         persistConfig();
       });
     }
@@ -1936,7 +1998,8 @@
     modBtns.forEach((btn) => {
       btn.addEventListener('click', async () => {
         const modId = btn.getAttribute('data-mod-id');
-        const currentlyEnabled = cfg.enabledMods && cfg.enabledMods.includes(modId);
+        const enabledList = (cfg.settings && cfg.settings.modListEnabled) || cfg.enabledMods || [];
+        const currentlyEnabled = enabledList.includes(modId);
         await toggleMod(modId, !currentlyEnabled);
         renderSettingsView(container);
       });
@@ -1948,12 +2011,21 @@
       await ipcInvoke('toggle_mod', { mod_id: modId, enabled: enabled });
 
       if (!state.config.enabledMods) state.config.enabledMods = [];
-      const idx = state.config.enabledMods.indexOf(modId);
+      if (!state.config.settings) state.config.settings = {};
+      if (!state.config.settings.modListEnabled) state.config.settings.modListEnabled = [];
 
-      if (enabled && idx === -1) {
+      const idx1 = state.config.enabledMods.indexOf(modId);
+      if (enabled && idx1 === -1) {
         state.config.enabledMods.push(modId);
-      } else if (!enabled && idx !== -1) {
-        state.config.enabledMods.splice(idx, 1);
+      } else if (!enabled && idx1 !== -1) {
+        state.config.enabledMods.splice(idx1, 1);
+      }
+
+      const idx2 = state.config.settings.modListEnabled.indexOf(modId);
+      if (enabled && idx2 === -1) {
+        state.config.settings.modListEnabled.push(modId);
+      } else if (!enabled && idx2 !== -1) {
+        state.config.settings.modListEnabled.splice(idx2, 1);
       }
 
       if (modId === 'Homestuck PT-BR' || modId === 'homestuck_ptbr') {
@@ -1965,6 +2037,9 @@
 
       // Update Quick PT-BR button appearance
       updateQuickPtBrButton();
+
+      // Refresh available mods list
+      state.availableMods = await ipcInvoke('get_available_mods').catch(() => state.availableMods);
 
       // If active tab is on a story page, re-render it immediately with new mod state
       const tab = getActiveTab();
@@ -2096,7 +2171,7 @@
      ========================================================================== */
 
   function renderHomepage(container) {
-    applyTheme('mspa');
+    applyTheme(computeActiveTheme(null, state.config.settings));
     document.title = 'The Unofficial Homestuck Collection';
 
     container.innerHTML = `
@@ -2152,7 +2227,7 @@
   }
 
   function renderMap(container, storyId = '6') {
-    applyTheme('mspa');
+    applyTheme(computeActiveTheme(null, state.config.settings));
     container.innerHTML = `
       <div class="systemPageContainer">
         <h1 style="font-family: 'Courier New', monospace;">ADVENTURE MAP</h1>
@@ -2176,7 +2251,7 @@
   }
 
   function renderLog(container, storyId = '6') {
-    applyTheme('mspa');
+    applyTheme(computeActiveTheme(null, state.config.settings));
     container.innerHTML = `
       <div class="systemPageContainer">
         <h1 style="font-family: 'Courier New', monospace;">ADVENTURE LOG</h1>
@@ -2195,7 +2270,7 @@
   }
 
   function renderSearch(container, initialQuery = '') {
-    applyTheme('mspa');
+    applyTheme(computeActiveTheme(null, state.config.settings));
     container.innerHTML = `
       <div class="systemPageContainer">
         <h1 style="font-family: 'Courier New', monospace;">SEARCH ADVENTURE</h1>
@@ -2226,7 +2301,7 @@
   }
 
   function renderCredits(container) {
-    applyTheme('mspa');
+    applyTheme(computeActiveTheme(null, state.config.settings));
     container.innerHTML = `
       <div class="systemPageContainer">
         <h1 style="font-family: 'Courier New', monospace;">CREDITS &amp; ATTRIBUTIONS</h1>
@@ -2244,7 +2319,7 @@
   }
 
   function renderSbahj(container, comicId = '1') {
-    applyTheme('sbahj');
+    applyTheme(computeActiveTheme('sbahj', state.config.settings));
     document.title = 'Sweet Bro and Hella Jeff';
 
     const cidNum = parseInt(comicId, 10) || 1;
@@ -2289,12 +2364,12 @@
         renderHomepage(pageContent);
         break;
       case 'SETTINGS':
-        applyTheme('mspa');
+        applyTheme(computeActiveTheme(null, state.config.settings));
         document.title = 'Settings — The Unofficial Homestuck Collection';
         renderSettingsView(pageContent);
         break;
       case 'MUSIC':
-        applyTheme('mspa');
+        applyTheme(computeActiveTheme(null, state.config.settings));
         document.title = 'Music — The Unofficial Homestuck Collection';
         if (route.view === 'discography') {
           await renderMusicDiscographyView(pageContent);
@@ -2329,6 +2404,10 @@
       default:
         renderHomepage(pageContent);
         break;
+    }
+
+    if (typeof window !== 'undefined' && window.TUHCDebugHud && typeof window.TUHCDebugHud.updateDisplay === 'function') {
+      window.TUHCDebugHud.updateDisplay();
     }
   }
 
@@ -2502,6 +2581,17 @@
       });
     }
 
+    // Home & Settings Buttons
+    const homeBtn = document.getElementById('nav-home-btn');
+    if (homeBtn) {
+      homeBtn.addEventListener('click', () => pushUrl('/'));
+    }
+
+    const settingsBtn = document.getElementById('nav-settings-btn');
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => pushUrl('/settings'));
+    }
+
     // Address input & Jumpbox prompt
     const addressInput = document.getElementById('address-bar-input');
     const jumpboxLink = document.getElementById('jumpbox-link');
@@ -2630,6 +2720,11 @@
     if (activeTab) {
       updateAddressBar(activeTab.url);
       await renderRoute(resolveRoute(activeTab.url));
+    }
+
+    // 5. Initialize Debug HUD Diagnostics if available
+    if (typeof window !== 'undefined' && window.TUHCDebugHud && typeof window.TUHCDebugHud.init === 'function') {
+      window.TUHCDebugHud.init();
     }
   }
 
