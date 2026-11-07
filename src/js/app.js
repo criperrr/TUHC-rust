@@ -30,6 +30,8 @@
     musicData: null,
     availableMods: [],
     saveDebounceTimer: null,
+    flashSaveRestore: null,
+    flashFrameGames: new WeakMap(),
     config: {
       assetPackPath: '',
       locale: 'en-US',
@@ -52,7 +54,8 @@
       },
       saveData: {
         saves: {},
-        saveList: []
+        saveList: [],
+        flashStorage: {}
       },
       settings: {
         themeOverride: 'default',
@@ -286,7 +289,7 @@
     };
 
     if (immediate) {
-      saveAction();
+      return saveAction();
     } else {
       state.saveDebounceTimer = setTimeout(saveAction, 150);
     }
@@ -1257,6 +1260,7 @@
           }
           return item;
         });
+        autoSaveStoryPage(pageId, fullTitle, page, mediaList);
 
         // Delegate to TUHCMediaEngine if available
         let engineHandled = false;
@@ -1270,7 +1274,9 @@
                 settings,
                 assetBase: state.assetBase,
                 cacheBuster: state.overlayGeneration,
-                navigate: pushUrl
+                navigate: pushUrl,
+                flashStorage: ensureSaveData().flashStorage,
+                flashRestore: state.flashSaveRestore
               },
               resolveAssetUrl
             );
@@ -1278,6 +1284,7 @@
             console.warn('[TUHC-MediaEngine] renderMedia threw:', e);
           }
         }
+        state.flashSaveRestore = null;
 
         if (!engineHandled) {
           mediaContainer.innerHTML = '';
@@ -1950,7 +1957,7 @@
           <h2>Themes &amp; Visuals</h2>
           <div class="settingRow">
             <label for="theme-select"><strong>MSPA Theme:</strong></label>
-            <select id="theme-select" style="padding: 4px; font-size: 12px;">
+            <select id="theme-select" style="padding: 6px 10px; font-size: 14px;">
               <option value="default" ${settings.themeOverride === 'default' ? 'selected' : ''}>MSPA Classic / Default</option>
               <option value="dark" ${settings.themeOverride === 'dark' ? 'selected' : ''}>Dark / Midnight</option>
               <option value="retro" ${settings.themeOverride === 'retro' ? 'selected' : ''}>Retro MSPA</option>
@@ -2018,9 +2025,9 @@
           </div>
           <div class="settingRow">
             <label>Retcon Enhancements (1–6):</label>
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; gap: 12px; align-items: center;">
               ${[1, 2, 3, 4, 5, 6].map((r) => `
-                <label style="font-size: 11px;">
+                <label style="font-size: 14px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
                   <input type="checkbox" id="setting-retcon-${r}" ${settings[`retcon${r}`] ? 'checked' : ''} /> R${r}
                 </label>
               `).join('')}
@@ -2036,8 +2043,8 @@
             <input type="checkbox" id="setting-discord-rpc" ${settings.enableDiscordRpc ? 'checked' : ''} />
           </div>
           <div class="settingRow" style="margin-top: 8px;">
-            <label for="setting-discord-client-id" style="font-size: 11px;">Application Client ID:</label>
-            <input type="text" id="setting-discord-client-id" value="${escapeHtml(settings.discordClientId || settings.discord_client_id || '1568232968214945812')}" placeholder="1568232968214945812" style="width: 220px; padding: 3px 6px; font-family: monospace; font-size: 11px;" />
+            <label for="setting-discord-client-id" style="font-size: 14px;">Application Client ID:</label>
+            <input type="text" id="setting-discord-client-id" value="${escapeHtml(settings.discordClientId || settings.discord_client_id || '1568232968214945812')}" placeholder="1568232968214945812" style="width: 220px; padding: 6px 10px; font-family: monospace; font-size: 13px;" />
           </div>
         </div>
 
@@ -2278,27 +2285,139 @@
     }
   }
 
-  function newSave() {
+  function ensureSaveData() {
+    if (!state.config.saveData || typeof state.config.saveData !== 'object') {
+      state.config.saveData = { saves: {}, saveList: [], flashStorage: {} };
+    }
+    const data = state.config.saveData;
+    if (!data.saves || typeof data.saves !== 'object') data.saves = {};
+    if (!Array.isArray(data.saveList)) data.saveList = [];
+    if (!data.flashStorage || typeof data.flashStorage !== 'object') data.flashStorage = {};
+    return data;
+  }
+
+  function getFlashGameKey(pageId, page, mediaList) {
+    const flashUrl = (Array.isArray(mediaList) ? mediaList : (page && page.media) || [])
+      .find((url) => typeof url === 'string' && /\.swf(?:$|\?)/i.test(url));
+    if (!flashUrl) return '';
+    try {
+      const resolver = root.TUHCFlashProps && root.TUHCFlashProps.resolveMediaAssets;
+      if (typeof resolver === 'function') {
+        const result = resolver(
+          flashUrl,
+          state.config.settings || {},
+          state.assetBase,
+          state.overlayGeneration,
+          String(pageId || ''),
+          (page && page.flags) || []
+        );
+        return result.flashId || result.rawFlashId || result.resolvedUrl || flashUrl;
+      }
+    } catch (_) {}
+    return flashUrl;
+  }
+
+  function copyFlashStorage(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    try {
+      const encoded = JSON.stringify(value);
+      if (encoded.length > 512000) return {};
+      return JSON.parse(encoded);
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function autoSaveStoryPage(pageId, title, page, mediaList) {
+    const id = String(pageId || '');
+    const tab = getActiveTab();
+    const gameKey = getFlashGameKey(id, page, mediaList);
+    const data = ensureSaveData();
+    const previous = data.saves.autosave || {};
+    const pending = state.flashSaveRestore;
+    const flashStorage = gameKey
+      ? copyFlashStorage(pending && pending.gameKey === gameKey
+        ? pending.storage
+        : (data.flashStorage[gameKey] || (previous.gameKey === gameKey && previous.flashStorage)))
+      : undefined;
+    const item = {
+      id: 'autosave',
+      kind: 'autosave',
+      name: 'AUTOSAVE',
+      title: title || 'MSPA',
+      url: (tab && tab.url) || `/mspa/${id}`,
+      pageId: id,
+      gameKey,
+      date: new Date().toLocaleString(),
+      ...(gameKey ? { flashStorage } : {})
+    };
+    data.saves.autosave = item;
+    data.saveList = ['autosave', ...data.saveList.filter((key) => key !== 'autosave')];
+    if (gameKey) {
+      data.flashStorage[gameKey] = flashStorage;
+    }
+    persistConfig(false);
+    renderBookmarksList();
+  }
+
+  function bindFlashSaveEvents() {
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (!message || message.type !== 'TUHC_RUFFLE_STORAGE' || typeof message.gameKey !== 'string') return;
+      const frames = Array.from(document.querySelectorAll('iframe.ruffle-frame'));
+      const frame = frames.find((item) => item.contentWindow === event.source);
+      if (frame && frame.dataset.flashId === message.gameKey) {
+        state.flashFrameGames.set(event.source, message.gameKey);
+      } else if (state.flashFrameGames.get(event.source) !== message.gameKey) {
+        return;
+      }
+      const storage = copyFlashStorage(message.storage);
+      const data = ensureSaveData();
+      data.flashStorage[message.gameKey] = storage;
+      const auto = data.saves.autosave;
+      if (auto && auto.gameKey === message.gameKey) auto.flashStorage = storage;
+      persistConfig(false);
+      renderBookmarksList();
+    });
+  }
+
+  async function newSave() {
     const active = getActiveTab();
-    const id = 'save_' + Date.now();
+    const page = state.currentRoute && state.currentRoute.mode === 'PAGE' ? state.currentPageData : null;
+    const pageId = page && (page.page_id || page.pageId);
+    const activeFlash = document.querySelector('iframe.ruffle-frame');
+    const gameKey = pageId
+      ? ((activeFlash || {}).dataset || {}).flashId || getFlashGameKey(pageId, page)
+      : '';
+    if (activeFlash && activeFlash.contentWindow) {
+      try {
+        activeFlash.contentWindow.postMessage({ type: 'TUHC_RUFFLE_STORAGE_REQUEST' }, '*');
+        await new Promise((resolve) => setTimeout(resolve, 60));
+      } catch (_) {}
+    }
+    const id = `save_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const data = ensureSaveData();
     const saveObj = {
       id: id,
+      kind: 'manual',
       name: active.title || 'Saved Page',
       url: active.url || '/',
-      date: new Date().toLocaleDateString()
+      pageId: pageId ? String(pageId) : '',
+      gameKey,
+      date: new Date().toLocaleString(),
+      ...(gameKey ? { flashStorage: copyFlashStorage(data.flashStorage[gameKey]) } : {})
     };
 
-    if (!state.config.saveData) state.config.saveData = { saves: {}, saveList: [] };
-    state.config.saveData.saves[id] = saveObj;
-    state.config.saveData.saveList.unshift(id);
+    data.saves[id] = saveObj;
+    data.saveList.unshift(id);
 
     renderBookmarksList();
-    persistConfig();
+    await persistConfig(true);
   }
 
   function deleteSave(id) {
-    const sd = state.config.saveData;
-    if (!sd) return;
+    if (id === 'autosave') return;
+    const sd = ensureSaveData();
 
     delete sd.saves[id];
     const idx = sd.saveList.indexOf(id);
@@ -2314,9 +2433,9 @@
     if (!listEl) return;
 
     listEl.innerHTML = '';
-    const sd = state.config.saveData;
-    if (!sd || !sd.saveList || sd.saveList.length === 0) {
-      listEl.innerHTML = '<p style="padding: 12px; font-size: 11px; color: #888;">No saved bookmarks yet.</p>';
+    const sd = ensureSaveData();
+    if (!sd.saveList.length) {
+      listEl.innerHTML = '<p class="emptySaveShelf">NO CARTRIDGES IN THE STRIFE DECK.</p>';
       return;
     }
 
@@ -2325,26 +2444,37 @@
       if (!item) continue;
 
       const card = document.createElement('div');
-      card.className = 'bookmarkItem';
+      const isAuto = id === 'autosave' || item.kind === 'autosave';
+      const isFlash = !!item.gameKey;
+      card.className = `bookmarkItem saveCartridge${isAuto ? ' autoSaveCartridge' : ''}`;
+      const displayPage = item.pageId ? `PAGE ${escapeHtml(item.pageId)}` : escapeHtml(item.url || '/');
       card.innerHTML = `
+        <div class="cartridgeNotch" aria-hidden="true"></div>
+        <div class="cartridgeFace">
+          <div class="cartridgeBrand">${isAuto ? 'AUTO SAVE' : 'SBURB SAVE'}${isFlash ? ' · FLASH' : ''}</div>
         <div class="bookmarkItemHeader">
-          <span class="bookmarkName">${item.name}</span>
+          <span class="bookmarkName">${escapeHtml(item.name || item.title || 'Saved Page')}</span>
           <div class="bookmarkBtnGroup">
-            <button class="primaryActionBtn bookmarkSmallBtn loadSaveBtn" data-id="${id}">Load</button>
-            <button class="navBtn bookmarkSmallBtn deleteSaveBtn" data-id="${id}">&times;</button>
+            <button class="primaryActionBtn bookmarkSmallBtn loadSaveBtn" data-id="${escapeHtml(id)}">LOAD</button>
+            ${isAuto ? '' : `<button class="navBtn bookmarkSmallBtn deleteSaveBtn" data-id="${escapeHtml(id)}" aria-label="Delete cartridge">×</button>`}
           </div>
         </div>
-        <div class="bookmarkUrl">${item.url} • ${item.date || ''}</div>
+        <div class="cartridgePage">${displayPage}</div>
+        <div class="bookmarkUrl">${escapeHtml(item.title || item.name || '')}<span>${escapeHtml(item.date || '')}</span></div>
+        </div>
       `;
 
       card.querySelector('.loadSaveBtn').addEventListener('click', () => {
-        pushUrl(item.url);
+        const storage = item.flashStorage || {};
+        state.flashSaveRestore = item.gameKey && Object.prototype.hasOwnProperty.call(item, 'flashStorage')
+          ? { gameKey: item.gameKey, storage: copyFlashStorage(storage) }
+          : null;
+        pushUrl(item.url || '/', true);
         toggleBookmarksDrawer(false);
       });
 
-      card.querySelector('.deleteSaveBtn').addEventListener('click', () => {
-        deleteSave(id);
-      });
+      const deleteButton = card.querySelector('.deleteSaveBtn');
+      if (deleteButton) deleteButton.addEventListener('click', () => deleteSave(id));
 
       listEl.appendChild(card);
     }
@@ -3696,6 +3826,7 @@
     setupTooltips();
     setupKeyboardShortcuts();
     bindChromeEvents();
+    bindFlashSaveEvents();
 
     // 4. Render Active Tab Initial URL
     const activeTab = getActiveTab();

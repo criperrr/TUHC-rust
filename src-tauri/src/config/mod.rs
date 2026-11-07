@@ -66,17 +66,25 @@ impl Default for TabData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Bookmark {
+    #[serde(default, alias = "id")]
     pub key: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub url: String,
+    #[serde(default, flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveData {
+    #[serde(default)]
     pub saves: HashMap<String, Bookmark>,
     #[serde(default, alias = "save_list")]
     pub save_list: Vec<String>,
+    #[serde(default)]
+    pub flash_storage: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

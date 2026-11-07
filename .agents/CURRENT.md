@@ -7,8 +7,8 @@ Executive summary and direct file index for token-efficient agent navigation in 
 ## 1. Executive Summary
 
 **Project Title:** TUHC-rust (The Unofficial Homestuck Collection - Tauri 2.0 / Rust Re-write)  
-**Active Status:** Resolving animated GIF act titles, homepage 3D logo, and font alignment on `fix/animated-gif-titles-and-font-alignment`.  
-**Quality Gate Status:** All verification gates passing 100% (Compilation, Formatting, Clippy, 31 Rust Tests, 3 Adversarial Integration Tests, 68 Python E2E Contract Tests, Memory RSS 62.6MB < 150MB SLA).
+**Active Status:** Aligned story commands and footer typography with authentic MSPA, verified logo transparency and settings controls on `fix/title-transparency-typography-and-settings`.
+**Quality Gate Status:** All verification gates passing 100% (Compilation, Formatting, Clippy, 31 Rust Tests, 3 Adversarial Integration Tests, 68 Python E2E Contract Tests, Memory RSS below 150MB SLA).
 
 **Key Achievements:**
 - **Universal Asset Resolution for Act Banners & Graphics:** Fixed `resolveAssetUrl` to automatically route all paths (including `/maps/`, `/images/`, `/storyfiles/`, `/archive/`, `/sweetbroandhellajeff/`, `/advimgs/`, `/scraps/`) through `${state.assetBase}/assets${url}` via Axum VFS, completely eliminating broken image `[?]` icons on `/map` and displaying all 26 authentic animated GIF act banners.
@@ -23,6 +23,12 @@ Executive summary and direct file index for token-efficient agent navigation in 
 - **MSPA Typography Refinement:** Removed generic `Arial, Helvetica, sans-serif` from `.customNavBanner` and replaced with authentic font stack (`"Courier Prime", "Courier New", Verdana, Geneva, monospace, sans-serif`).
 - **Reading Progress Auto-Save & Resume:** Implemented automatic tracking of read pages within the Homestuck story range (`001901` to `010030`), automatically updating `settings.newReader.current` and `limit` in `config.json` via debounced persistence, and dynamically surfacing `"Resume Homestuck at page [X]"` on the Homepage.
 - **Frontend E2E Test Suite 100% Pass:** Resolved asynchronous command container race condition in `renderStoryPage` through synchronous DOM scaffolding and fast in-memory page cache, achieving 9/9 passing tests in Playwright suite.
+- **Visual Readability and Logo Transparency:** Converted the homepage animated logo to transparent frames and optimized it from 13.9MB to 5.8MB; increased settings labels, controls, dates, navigation, and story text sizes; set the UI font stack to Courier Prime to remove remaining Arial use.
+- **Theme Surface Contrast:** Added explicit foreground colors for log and card surfaces, corrected scratch/cascade/collide log backgrounds to match their light text, made Trickster body text black against its bright pink surfaces, and brightened footer metadata on dark themes.
+- **Settings Selector and Archive Alignment:** Fixed the theme selector foreground/background and native color scheme so the selected value remains readable in dark themes; centered archive thumbnails over their date/page metadata across all entries.
+- **Archive Entry Column Alignment:** Set a shared responsive archive icon/metadata column (up to 200px) so descriptions in Jailbreak, Bard Quest, Problem Sleuth, and similar entries share one horizontal start position.
+- **Automatic Progress Saves & Cartridge Shelf:** Story pages update a protected autosave cartridge in `saveData`; the SBURB Save Deck displays autosaves and manual cartridges with page, title, and time plus load/delete actions. Manual cartridges retain their own Flash storage snapshots.
+- **Ruffle SharedObject Save Bridge:** Wrapped the embedded player’s local storage methods and persist each Flash game’s SharedObject data through `saveData.flashStorage`, so selecting a cartridge seeds that player with its saved data. Ruffle has no public general-purpose frame savestate API, so games that do not persist their own state cannot be restored to arbitrary in-memory frames.
 
 ---
 
@@ -38,7 +44,7 @@ Executive summary and direct file index for token-efficient agent navigation in 
 - `data/mod.rs`: `ArchiveStore` combining StoryStore and MusicStore.
 - `data/story.rs`: `StoryStore` loading and querying `mspa.json` (9,991 pages) with dynamic patch applicator.
 - `data/music.rs`: `MusicStore` loading and querying `music.json` (797 tracks, 37 albums).
-- `config/mod.rs`: `AppConfig` persistence with atomic tempfile replacement, `config.json` serialization, tab management.
+- `config/mod.rs`: `AppConfig` persistence with atomic tempfile replacement, `config.json` serialization, tab management, flexible save cartridge metadata, and Flash storage snapshots.
 - `mods/mod.rs`: `ModRegistry` managing installed and enabled community mods.
 - `mods/parser.rs`: Regex-based declarative parser for `mod.js` and patch loader for `translation2.json`.
 - `rpc/mod.rs`: Native asynchronous Discord Local IPC manager, MSPA chapter resolution, Reading/Music presence, and Unix domain socket client.
@@ -46,10 +52,10 @@ Executive summary and direct file index for token-efficient agent navigation in 
 
 ### 2.2. Frontend Shell (`src/`)
 - `index.html`: Shell loading Webview UI, Ruffle Flash player WASM, and loopback communication.
-- `styles/main.css`: 13 authentic MSPA themes, Courier typography, pesterlog quirks, and 950px frame.
-- `js/app.js`: Tabbed browser navigation, URL router, bookmark persistence, settings, and sound test.
+- `styles/main.css`: 13 authentic MSPA themes, Courier Prime/Courierstuck typography, readable settings controls, pesterlog quirks, and 950px frame.
+- `js/app.js`: Tabbed browser navigation, URL router, progress autosaves, save cartridge shelf, bookmark persistence, settings, and sound test.
 - `js/flashProps.js`: Millisecond audio delay tables, negative seek offsets, crop heights, and transitions.
-- `js/mediaEngine.js`: Ruffle WASM iframe loader, Frag IPC bridge, HTML5 audio/video, and Sburb canvas.
+- `js/mediaEngine.js`: Ruffle WASM iframe loader, per-game SharedObject save bridge, Frag IPC bridge, HTML5 audio/video, and Sburb canvas.
 - `js/modHooks.js`: VueHooks evaluator, rate-limited console sandbox, English & PT-BR button text.
 
 ### 2.3. Test Infrastructure (`tests/` & `src-tauri/tests/`)

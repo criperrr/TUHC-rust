@@ -221,6 +221,15 @@
     const height = opts.height || 450;
     const bgColor = opts.bgColor || '#ffffff';
     const cleanBase = (opts.assetBase || '').replace(/\/+$/, '');
+    const gameKey = String(opts.gameKey || opts.flashId || swfUrl);
+    const storageSeed = JSON.stringify(opts.flashStorage || {})
+      .replace(/</g, '\\u003c')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
+    const gameKeyLiteral = JSON.stringify(gameKey)
+      .replace(/</g, '\\u003c')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
 
     // Canonical self-hosted Ruffle bundle path inside Asset Pack V2
     const ruffleJsUrl = cleanBase
@@ -248,6 +257,78 @@
       display: block;
     }
   </style>
+  <script>
+    (function () {
+      var gameKey = ${gameKeyLiteral};
+      var values = Object.assign(Object.create(null), ${storageSeed});
+      function snapshot() {
+        var result = Object.create(null);
+        Object.keys(values).forEach(function (key) { result[key] = String(values[key]); });
+        return result;
+      }
+      function notifyParent() {
+        try {
+          window.parent.postMessage({
+            type: 'TUHC_RUFFLE_STORAGE',
+            gameKey: gameKey,
+            storage: snapshot()
+          }, '*');
+        } catch (e) {}
+      }
+      try {
+        var nativeStorage = window.localStorage;
+        var storageProto = Object.getPrototypeOf(nativeStorage);
+        var nativeGet = storageProto.getItem;
+        var nativeSet = storageProto.setItem;
+        var nativeRemove = storageProto.removeItem;
+        var nativeClear = storageProto.clear;
+        var nativeKey = storageProto.key;
+        var nativeLength = Object.getOwnPropertyDescriptor(storageProto, 'length');
+        storageProto.getItem = function (key) {
+          if (this !== nativeStorage) return nativeGet.call(this, key);
+          key = String(key);
+          return Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : null;
+        };
+        storageProto.setItem = function (key, value) {
+          if (this !== nativeStorage) return nativeSet.call(this, key, value);
+          values[String(key)] = String(value);
+          notifyParent();
+        };
+        storageProto.removeItem = function (key) {
+          if (this !== nativeStorage) return nativeRemove.call(this, key);
+          delete values[String(key)];
+          notifyParent();
+        };
+        storageProto.clear = function () {
+          if (this !== nativeStorage) return nativeClear.call(this);
+          values = Object.create(null);
+          notifyParent();
+        };
+        storageProto.key = function (index) {
+          if (this !== nativeStorage) return nativeKey.call(this, index);
+          return Object.keys(values)[index] || null;
+        };
+        if (nativeLength && nativeLength.get) {
+          try {
+            Object.defineProperty(storageProto, 'length', {
+              configurable: true,
+              enumerable: nativeLength.enumerable,
+              get: function () {
+                return this === nativeStorage ? Object.keys(values).length : nativeLength.get.call(this);
+              }
+            });
+          } catch (_) {}
+        }
+        window.addEventListener('message', function (event) {
+          if (event.source === window.parent && event.data && event.data.type === 'TUHC_RUFFLE_STORAGE_REQUEST') notifyParent();
+        });
+        window.addEventListener('pagehide', notifyParent);
+        notifyParent();
+      } catch (e) {
+        console.warn('[TUHC-Ruffle] Save bridge unavailable; using browser storage.', e);
+      }
+    })();
+  </script>
   <script>
     window.RufflePlayer = window.RufflePlayer || {};
     window.RufflePlayer.config = {
@@ -830,6 +911,11 @@
       // 1. Flash Animation (.swf) -> Ruffle WASM Player Iframe
       if (ext === 'swf') {
         currentFlashProps = resolved;
+        const gameKey = resolved.flashId || resolved.rawFlashId || resolved.resolvedUrl;
+        const restoredSave = currentAppContext.flashRestore;
+        const flashStorage = restoredSave && restoredSave.gameKey === gameKey
+          ? restoredSave.storage
+          : ((currentAppContext.flashStorage && currentAppContext.flashStorage[gameKey]) || {});
         const initialHeight = (settings.jsFlashes !== false && resolved.isCropped)
           ? resolved.cropHeight
           : `${resolved.height}px`;
@@ -838,7 +924,7 @@
         iframe.className = 'page-media-flash ruffle-frame';
         iframe.setAttribute('data-media-type', 'ruffle-flash');
         iframe.setAttribute('data-swf-src', resolved.resolvedUrl);
-        iframe.setAttribute('data-flash-id', resolved.flashId);
+        iframe.setAttribute('data-flash-id', gameKey);
         iframe.style.width = `${resolved.width}px`;
         iframe.style.height = initialHeight;
         iframe.style.border = 'none';
@@ -853,7 +939,9 @@
           height: resolved.height,
           bgColor: resolved.bgcolor,
           assetBase,
-          flashId: resolved.flashId
+          flashId: resolved.flashId,
+          gameKey,
+          flashStorage
         });
         iframe.srcdoc = srcdocHtml;
 
