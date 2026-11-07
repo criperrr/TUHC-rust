@@ -258,3 +258,63 @@ Append new entries to the end of this file using the standard template:
   - `src/fonts/` (WOFF and non-space font copies)
   - `.agents/CURRENT.md`
 - **Impact / Next Steps:** Passed all 31 unit tests, 3 adversarial tests, 68 Tier 1-4 Python E2E contract tests, clippy, and memory gatekeeper (<150MB RSS). Ready for PR merge to `dev`.
+
+## `2026-11-06 14:36` - `fix(ui)`: improve theme readability, settings controls, and animated logo transparency
+
+- **Description:** Removed the remaining Arial UI declarations in favor of Courier Prime, increased settings, navigation, story text, and date readability, enlarged checkboxes and select controls, and made the animated homepage logo transparent. Optimized the 182-frame logo GIF from 13.9MB to 5.8MB while preserving the sampled rendered frame.
+- **Files Modified:**
+  - `src/assets/collection_logo.gif`
+  - `src/styles/main.css`
+  - `.agents/CURRENT.md`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** CSS whitespace check passes. Full app visual review and automated suites have not been rerun after these changes.
+
+## `2026-11-06 14:55` - `fix(ui)`: correct unreadable text on themed content surfaces
+
+- **Description:** Added theme-aware foreground tokens to story logs, author logs, and card containers. Fixed scratch, cascade, and collide logs to use dark backgrounds with light text; changed Trickster body and card text to black for contrast against pink surfaces; raised metadata contrast on dark themes.
+- **Files Modified:**
+  - `src/styles/main.css`
+  - `.agents/CURRENT.md`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** `git diff --check` passes. Automated suites and desktop visual review have not been rerun.
+
+## `2026-11-06 15:01` - `fix(ui)`: improve theme selector contrast and center archive thumbnails
+
+- **Description:** Gave settings theme selectors theme-aware foreground/background colors and native control color schemes, fixing white text on a light system select in dark themes. Centered archive thumbnails so they align with the date and page-count lines below them.
+- **Files Modified:**
+  - `src/styles/main.css`
+  - `.agents/CURRENT.md`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** `git diff --check` passes. UI has not been relaunched for a visual confirmation.
+
+## `2026-11-06 15:03` - `fix(ui)`: align archive card descriptions
+
+- **Description:** Set a shared responsive archive entry icon/metadata column, capped at 200px, so text descriptions start at the same horizontal position despite different date and page-count lengths.
+- **Files Modified:**
+  - `src/styles/main.css`
+  - `.agents/CURRENT.md`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** `git diff --check` passes. No app visual confirmation yet.
+
+## `2026-11-06 15:24` - `feat(saves)`: add autosave cartridges and Flash SharedObject snapshots
+
+- **Description:** Automatically saves each story page as an AUTOSAVE cartridge and adds a SBURB Save Deck with loadable/deletable manual cartridges. Added a per-game Ruffle local-storage bridge so Flash SharedObject data is stored in config and copied into manual cartridges for restore. Expanded save metadata serialization without dropping older bookmark fields.
+- **Files Modified:**
+  - `src-tauri/src/config/mod.rs`
+  - `src/index.html`
+  - `src/js/app.js`
+  - `src/js/mediaEngine.js`
+  - `src/styles/main.css`
+  - `.agents/CURRENT.md`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** `git diff --check` passes. Full tests and desktop UI review have not been run. Ruffle does not expose generic in-memory frame savestates; the Flash cartridge captures SharedObject storage and page location.
+
+
+## `2026-11-07 14:49` - `fix(ui)`: align story commands and footer typography with authentic mspa
+
+- **Description:** Updated story command links (`.nextArrow`) and footer navigation (`.footerNav`) to authentic `Verdana, Arial, Helvetica, sans-serif` font stack with normal weight and 10px footer text, matching official TUHC and MSPA layouts. Synchronized nav banner font size and candy corn spacing, updated settings row controls to clean sans-serif typography with high contrast, and verified test suites.
+- **Files Modified:**
+  - `src/styles/main.css`
+  - `.agents/CURRENT.md`
+  - `.agents/COMMITS.md`
+- **Impact / Next Steps:** Passed 34 Rust unit/adversarial integration tests and 68 Python E2E contract tests cleanly. Ready for branch push and PR creation.
